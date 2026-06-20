@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bonk — mis nooit meer een meeting</title>
+<meta name="description" content="Bonk waarschuwt je vlak voor een meeting met een schermvullende melding of notificatie — met één klik joinen, snoozen of negeren. Slimme regels per agenda, eigen weergaven en custom herinneringen. Gratis en privacyvriendelijk.">
+<link rel="icon" type="image/png" href="assets/icon-256.png">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="nav">
+  <div class="container nav-inner">
+    <a class="brand" href="#">
+      <img src="assets/icon.png" alt="Bonk-logo" width="34" height="34">
+      <span>Bonk</span>
+    </a>
+    <nav class="nav-links">
+      <a href="#features" data-i18n="nav.features">Functies</a>
+      <a href="#instellingen" data-i18n="nav.settings">Instellingen</a>
+      <a href="#gratis" data-i18n="nav.free">Gratis</a>
+      <div class="lang-switch" role="group" aria-label="Taal / Language">
+        <button type="button" data-lang-btn="nl">NL</button>
+        <button type="button" data-lang-btn="en">EN</button>
+      </div>
+      <a class="btn btn-small" href="#download" data-i18n="nav.download">Download</a>
+    </nav>
+  </div>
+</header>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="container hero-inner">
+    <div class="hero-copy">
+      <span class="eyebrow" data-i18n="hero.eyebrow">macOS-menubalk · agenda-meldingen</span>
+      <h1 data-i18n="hero.h1">Mis nooit meer een meeting.</h1>
+      <p class="lead" data-i18n="hero.lead">
+        Bonk waarschuwt je vlak voor een afspraak met een <strong>schermvullende melding</strong>
+        die je niet kúnt missen — met één klik joinen, snoozen of negeren. Of houd het subtiel
+        met een gewone notificatie. Jij bepaalt het, per meeting.
+      </p>
+      <div class="cta-row">
+        <a class="btn btn-large" href="https://github.com/Kierkels/bonk/releases/latest" target="_blank" rel="noopener" data-i18n="cta.download">Download voor macOS</a>
+        <span class="cta-note" data-i18n="hero.ctaNote">Gratis · privacyvriendelijk · geen account</span>
+      </div>
+      <ul class="badges">
+        <li data-i18n="hero.badge1">🆓 Volledig gratis</li>
+        <li data-i18n="hero.badge2">🔒 Privacyvriendelijk</li>
+        <li data-i18n="hero.badge3">🖥️ Werkt op al je schermen</li>
+      </ul>
+    </div>
+
+    <div class="hero-mock">
+      <img class="hero-shot" src="assets/hero-shot.png" width="1600" height="1034"
+        data-i18n-alt="hero.shotAlt"
+        alt="Bonk's schermvullende waarschuwing: ‘Begint over 59 sec — Sprint Review’ met Joinen, Snooze en Negeren.">
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section id="features" class="section">
+  <div class="container">
+    <h2 class="section-title" data-i18n="feat.title">Zo mis je nooit meer het begin</h2>
+    <p class="section-intro" data-i18n="feat.intro">
+      Bonk leeft in je menubalk, leest je agenda en springt op het juiste moment in beeld —
+      precies zo opvallend of subtiel als jij wilt.
+    </p>
+
+    <div class="grid">
+      <article class="card">
+        <div class="card-ic">🖥️</div>
+        <h3 data-i18n="f1.h">Schermvullende waarschuwing</h3>
+        <p data-i18n="f1.p">Een grote, gelikte melding die over álles heen komt — ook over fullscreen apps.
+        Onmogelijk te missen, met de titel, tijd, ruimte en een live aftelteller.</p>
+      </article>
+
+      <article class="card">
+        <div class="card-ic">🔔</div>
+        <h3 data-i18n="f2.h">Of juist subtiel</h3>
+        <p data-i18n="f2.p">Liever rustig? Kies per regel voor een gewone macOS-notificatie in plaats van het
+        schermvullende scherm. Met dezelfde Joinen- en Negeren-knoppen.</p>
+      </article>
+
+      <article class="card">
+        <div class="card-ic">🎥</div>
+        <h3 data-i18n="f3.h">Joinen met één klik</h3>
+        <p data-i18n="f3.p">Bonk vist automatisch de vergaderlink uit je afspraak — Google Meet, Zoom, Teams
+        of Webex — en zet er een Joinen-knop op. Of laat 'm automatisch openen op de starttijd.</p>
+      </article>
+
+      <article class="card">
+        <div class="card-ic">🎛️</div>
+        <h3 data-i18n="f4.h">Slimme regels</h3>
+        <p data-i18n="f4.p">Bepaal precies waarvoor je gewaarschuwd wordt: op titel, alleen geaccepteerde
+        meetings, bepaalde dagen of een specifieke agenda — en hoeveel minuten van tevoren.</p>
+      </article>
+
+      <article class="card">
+        <div class="card-ic">🙈</div>
+        <h3 data-i18n="f5.h">Automatisch negeren</h3>
+        <p data-i18n="f5.p">Nooit gewaarschuwd worden voor lunch, prikkers of ‘[hold]’-blokken? Maak een
+        negeer-regel en die meetings blijven stil — automatisch.</p>
+      </article>
+
+      <article class="card">
+        <div class="card-ic">🎨</div>
+        <h3 data-i18n="f6.h">Eigen weergaven</h3>
+        <p data-i18n="f6.p">Stel weergave-presets in: gradient, een geblurd beeld van je scherm, een eigen
+        afbeelding of effen kleur. Kies per regel welke je gebruikt, en wat er getoond wordt.</p>
+      </article>
+
+      <article class="card">
+        <div class="card-ic">👥</div>
+        <h3 data-i18n="f7.h">Meerdere meetings tegelijk</h3>
+        <p data-i18n="f7.p">Twee afspraken op hetzelfde moment? Bonk toont ze allebei, elk met een eigen
+        Joinen-knop, zodat je zelf kiest waar je heen gaat.</p>
+      </article>
+
+      <article class="card">
+        <div class="card-ic">🖥️🖥️</div>
+        <h3 data-i18n="f8.h">Werkt op al je schermen</h3>
+        <p data-i18n="f8.p">Meerdere monitors? De melding verschijnt op je hoofdscherm; de andere schermen
+        krijgen hetzelfde sfeervolle achtergrondeffect. Nergens te ontsnappen.</p>
+      </article>
+
+      <article class="card">
+        <div class="card-ic">⏰</div>
+        <h3 data-i18n="f9.h">Eigen herinneringen</h3>
+        <p data-i18n="f9.p">Iets wat niet in je agenda staat? Voeg snel een custom herinnering toe met een tijd
+        voor vandaag — Bonk behandelt 'm net als een meeting.</p>
+      </article>
+
+      <article class="card">
+        <div class="card-ic">📊</div>
+        <h3 data-i18n="f10.h">Slimme menubalk</h3>
+        <p data-i18n="f10.p">Zie je volgende meeting in de menubalk: alleen een icoon, een aftelteller, het
+        tijdstip of de titel. En per agenda je eigen kleur als markering.</p>
+      </article>
+
+      <article class="card">
+        <div class="card-ic">📅</div>
+        <h3 data-i18n="f11.h">Jouw agenda's</h3>
+        <p data-i18n="f11.p">Werkt met de agenda's die je Mac al synct — Google, iCloud, Exchange — via
+        EventKit. Kies per agenda of je 'm volgt en welke kleur 'ie krijgt.</p>
+      </article>
+
+      <article class="card">
+        <div class="card-ic">🌍</div>
+        <h3 data-i18n="f12.h">Nederlands, Engels, licht &amp; donker</h3>
+        <p data-i18n="f12.p">Volgt automatisch de taal en weergave van je Mac, of forceer je eigen keuze.
+        Een echte menubalk-app: geen Dock-icoon, start bij inloggen.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- SETTINGS SHOWCASE -->
+<section id="instellingen" class="section settings">
+  <div class="container">
+    <h2 class="section-title" data-i18n="set.title">Tot in de puntjes naar jouw hand gezet</h2>
+    <p class="section-intro" data-i18n="set.intro">
+      Eén overzichtelijk instellingenvenster. Stel je regels in, ontwerp je weergaven, voeg
+      herinneringen toe en regel taal, thema en de menubalk.
+    </p>
+
+    <div class="shots">
+      <div class="shot">
+        <img class="shot-img" data-shot="rules" src="assets/shots/rules-nl.png" width="720" height="632"
+          loading="lazy" data-i18n-alt="shot1.alt" alt="Instellingen — tabblad Regels.">
+        <div class="shot-caption">
+          <h3 data-i18n="shot1.h">Regels met voorrang</h3>
+          <p data-i18n="shot1.p">Meerdere regels, de bovenste die past wint. Filter op titel, agenda, dagen of
+          geaccepteerd — en kies schermvullend, notificatie of negeren.</p>
+        </div>
+      </div>
+
+      <div class="shot">
+        <img class="shot-img" data-shot="appearance" src="assets/shots/appearance-nl.png" width="720" height="632"
+          loading="lazy" data-i18n-alt="shot2.alt" alt="Instellingen — tabblad Weergave.">
+        <div class="shot-caption">
+          <h3 data-i18n="shot2.h">Eigen weergaven</h3>
+          <p data-i18n="shot2.p">Gradient, geblurd scherm, afbeelding of effen kleur. Bepaal wat er op het scherm
+          komt en koppel een weergave aan een regel.</p>
+        </div>
+      </div>
+
+      <div class="shot">
+        <img class="shot-img" data-shot="reminders" src="assets/shots/reminders-nl.png" width="720" height="632"
+          loading="lazy" data-i18n-alt="shot3.alt" alt="Instellingen — tabblad Herinneringen.">
+        <div class="shot-caption">
+          <h3 data-i18n="shot3.h">Custom herinneringen</h3>
+          <p data-i18n="shot3.p">Voeg snel iets toe dat niet in je agenda staat. Bonk waarschuwt ervoor net als
+          voor een gewone meeting.</p>
+        </div>
+      </div>
+
+      <div class="shot">
+        <img class="shot-img" data-shot="general" src="assets/shots/general-nl.png" width="720" height="632"
+          loading="lazy" data-i18n-alt="shot4.alt" alt="Instellingen — tabblad Algemeen.">
+        <div class="shot-caption">
+          <h3 data-i18n="shot4.h">Taal, thema &amp; menubalk</h3>
+          <p data-i18n="shot4.p">Nederlands of Engels, licht of donker, en kies wat de menubalk toont. Plus
+          automatisch starten bij inloggen.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- GRATIS -->
+<section id="gratis" class="section band">
+  <div class="container band-inner">
+    <div class="band-copy">
+      <h2 data-i18n="free.h">Gratis. En dat blijft zo.</h2>
+      <p data-i18n="free.p">
+        Bonk is <strong>volledig gratis</strong> en <strong>advertentievrij</strong>. Geen
+        abonnement, geen "pro"-versie achter een betaalmuur. Gewoon een fijn hulpmiddel dat
+        ervoor zorgt dat je op tijd in je meeting zit.
+      </p>
+      <ul class="checklist">
+        <li data-i18n="free.li1">Geen advertenties of trackers</li>
+        <li data-i18n="free.li2">Geen account of inlog</li>
+        <li data-i18n="free.li3">Geen in-app aankopen</li>
+        <li data-i18n="free.li4">Geen verzamelde agenda-gegevens</li>
+      </ul>
+    </div>
+    <div class="price-card">
+      <span class="price">€0</span>
+      <span class="price-sub" data-i18n="price.sub">voor altijd</span>
+      <a class="btn btn-large" href="#download" data-i18n="cta.download">Download voor macOS</a>
+      <span class="price-note" data-i18n="price.note">Vereist macOS 14 of nieuwer</span>
+    </div>
+  </div>
+</section>
+
+<!-- PRIVACY -->
+<section id="privacy" class="section">
+  <div class="container narrow center">
+    <div class="card-ic big">🔒</div>
+    <h2 class="section-title" data-i18n="privacy.h">Privacy by design</h2>
+    <p class="section-intro" data-i18n="privacy.p">
+      Bonk leest je agenda rechtstreeks op je eigen Mac via EventKit — er gaat niets naar een
+      server. Geen account, geen tracking, geen profielen. Ook de geblurde achtergrond wordt
+      lokaal van je scherm gemaakt en verlaat je apparaat niet.
+    </p>
+  </div>
+</section>
+
+<!-- DOWNLOAD -->
+<section id="download" class="section download">
+  <div class="container narrow center">
+    <img src="assets/icon.png" alt="Bonk" width="96" height="96" class="dl-icon">
+    <h2 data-i18n="dl.h">Klaar om nooit meer een meeting te missen?</h2>
+    <p class="section-intro" data-i18n="dl.intro">Download Bonk en stel je eerste regel in een minuut in.</p>
+    <a class="btn btn-large" href="https://github.com/Kierkels/bonk/releases/latest" target="_blank" rel="noopener" data-i18n="cta.download">Download voor macOS</a>
+    <p class="cta-note" data-i18n="dl.note">Gratis · privacyvriendelijk · macOS 14+</p>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="container footer-inner">
+    <div class="brand">
+      <img src="assets/icon-256.png" alt="" width="24" height="24">
+      <span>Bonk</span>
+    </div>
+    <span class="copyright">© 2026 Roland Kierkels</span>
+  </div>
+</footer>
+
+<script>
+const I18N = {
+  "nav.features": { nl: "Functies", en: "Features" },
+  "nav.settings": { nl: "Instellingen", en: "Settings" },
+  "nav.free": { nl: "Gratis", en: "Free" },
+  "nav.download": { nl: "Download", en: "Download" },
+  "cta.download": { nl: "Download voor macOS", en: "Download for macOS" },
+
+  "hero.eyebrow": { nl: "macOS-menubalk · agenda-meldingen", en: "macOS menu bar · meeting alerts" },
+  "hero.h1": { nl: "Mis nooit meer een meeting.", en: "Never miss a meeting again." },
+  "hero.lead": {
+    nl: "Bonk waarschuwt je vlak voor een afspraak met een <strong>schermvullende melding</strong> die je niet kúnt missen — met één klik joinen, snoozen of negeren. Of houd het subtiel met een gewone notificatie. Jij bepaalt het, per meeting.",
+    en: "Bonk warns you right before a meeting with a <strong>full-screen alert</strong> you can't miss — join, snooze or ignore in one click. Or keep it subtle with a regular notification. You decide, per meeting."
+  },
+  "hero.ctaNote": { nl: "Gratis · privacyvriendelijk · geen account", en: "Free · privacy-friendly · no account" },
+  "hero.badge1": { nl: "🆓 Volledig gratis", en: "🆓 Completely free" },
+  "hero.badge2": { nl: "🔒 Privacyvriendelijk", en: "🔒 Privacy-friendly" },
+  "hero.badge3": { nl: "🖥️ Werkt op al je schermen", en: "🖥️ Works on all your screens" },
+  "hero.shotAlt": {
+    nl: "Bonk's schermvullende waarschuwing: ‘Begint over 59 sec — Sprint Review’ met Joinen, Snooze en Negeren.",
+    en: "Bonk's full-screen alert: ‘Starts in 59 sec — Sprint Review’ with Join, Snooze and Ignore."
+  },
+
+  "feat.title": { nl: "Zo mis je nooit meer het begin", en: "Never miss the start again" },
+  "feat.intro": {
+    nl: "Bonk leeft in je menubalk, leest je agenda en springt op het juiste moment in beeld — precies zo opvallend of subtiel als jij wilt.",
+    en: "Bonk lives in your menu bar, reads your calendar and appears at exactly the right moment — as bold or subtle as you like."
+  },
+
+  "f1.h": { nl: "Schermvullende waarschuwing", en: "Full-screen alert" },
+  "f1.p": {
+    nl: "Een grote, gelikte melding die over álles heen komt — ook over fullscreen apps. Onmogelijk te missen, met de titel, tijd, ruimte en een live aftelteller.",
+    en: "A big, polished alert that covers everything — even full-screen apps. Impossible to miss, with the title, time, room and a live countdown."
+  },
+  "f2.h": { nl: "Of juist subtiel", en: "Or keep it subtle" },
+  "f2.p": {
+    nl: "Liever rustig? Kies per regel voor een gewone macOS-notificatie in plaats van het schermvullende scherm. Met dezelfde Joinen- en Negeren-knoppen.",
+    en: "Prefer calm? Choose a regular macOS notification per rule instead of the full-screen view — with the same Join and Ignore buttons."
+  },
+  "f3.h": { nl: "Joinen met één klik", en: "Join in one click" },
+  "f3.p": {
+    nl: "Bonk vist automatisch de vergaderlink uit je afspraak — Google Meet, Zoom, Teams of Webex — en zet er een Joinen-knop op. Of laat 'm automatisch openen op de starttijd.",
+    en: "Bonk pulls the meeting link out of your event — Google Meet, Zoom, Teams or Webex — and adds a Join button. Or let it open automatically at start time."
+  },
+  "f4.h": { nl: "Slimme regels", en: "Smart rules" },
+  "f4.p": {
+    nl: "Bepaal precies waarvoor je gewaarschuwd wordt: op titel, alleen geaccepteerde meetings, bepaalde dagen of een specifieke agenda — en hoeveel minuten van tevoren.",
+    en: "Decide exactly what you're alerted for: by title, only accepted meetings, certain days or a specific calendar — and how many minutes ahead."
+  },
+  "f5.h": { nl: "Automatisch negeren", en: "Auto-ignore" },
+  "f5.p": {
+    nl: "Nooit gewaarschuwd worden voor lunch, prikkers of ‘[hold]’-blokken? Maak een negeer-regel en die meetings blijven stil — automatisch.",
+    en: "Never want alerts for lunch, focus blocks or ‘[hold]’ slots? Make an ignore rule and those meetings stay quiet — automatically."
+  },
+  "f6.h": { nl: "Eigen weergaven", en: "Your own appearances" },
+  "f6.p": {
+    nl: "Stel weergave-presets in: gradient, een geblurd beeld van je scherm, een eigen afbeelding of effen kleur. Kies per regel welke je gebruikt, en wat er getoond wordt.",
+    en: "Set up appearance presets: gradient, a blurred shot of your screen, your own image or a solid colour. Pick one per rule, and choose what's shown."
+  },
+  "f7.h": { nl: "Meerdere meetings tegelijk", en: "Multiple meetings at once" },
+  "f7.p": {
+    nl: "Twee afspraken op hetzelfde moment? Bonk toont ze allebei, elk met een eigen Joinen-knop, zodat je zelf kiest waar je heen gaat.",
+    en: "Two meetings at the same time? Bonk shows them both, each with its own Join button, so you choose where to go."
+  },
+  "f8.h": { nl: "Werkt op al je schermen", en: "Works on all your screens" },
+  "f8.p": {
+    nl: "Meerdere monitors? De melding verschijnt op je hoofdscherm; de andere schermen krijgen hetzelfde sfeervolle achtergrondeffect. Nergens te ontsnappen.",
+    en: "Multiple monitors? The alert appears on your main screen; the others get the same atmospheric background effect. Nowhere to hide."
+  },
+  "f9.h": { nl: "Eigen herinneringen", en: "Custom reminders" },
+  "f9.p": {
+    nl: "Iets wat niet in je agenda staat? Voeg snel een custom herinnering toe met een tijd voor vandaag — Bonk behandelt 'm net als een meeting.",
+    en: "Something not in your calendar? Quickly add a custom reminder with a time for today — Bonk treats it just like a meeting."
+  },
+  "f10.h": { nl: "Slimme menubalk", en: "Smart menu bar" },
+  "f10.p": {
+    nl: "Zie je volgende meeting in de menubalk: alleen een icoon, een aftelteller, het tijdstip of de titel. En per agenda je eigen kleur als markering.",
+    en: "See your next meeting in the menu bar: just an icon, a countdown, the time or the title. And your own colour per calendar as a marker."
+  },
+  "f11.h": { nl: "Jouw agenda's", en: "Your calendars" },
+  "f11.p": {
+    nl: "Werkt met de agenda's die je Mac al synct — Google, iCloud, Exchange — via EventKit. Kies per agenda of je 'm volgt en welke kleur 'ie krijgt.",
+    en: "Works with the calendars your Mac already syncs — Google, iCloud, Exchange — via EventKit. Choose per calendar whether to follow it and its colour."
+  },
+  "f12.h": { nl: "Nederlands, Engels, licht &amp; donker", en: "Dutch, English, light &amp; dark" },
+  "f12.p": {
+    nl: "Volgt automatisch de taal en weergave van je Mac, of forceer je eigen keuze. Een echte menubalk-app: geen Dock-icoon, start bij inloggen.",
+    en: "Follows your Mac's language and appearance automatically, or force your own choice. A true menu bar app: no Dock icon, starts at login."
+  },
+
+  "set.title": { nl: "Tot in de puntjes naar jouw hand gezet", en: "Tailored down to the last detail" },
+  "set.intro": {
+    nl: "Eén overzichtelijk instellingenvenster. Stel je regels in, ontwerp je weergaven, voeg herinneringen toe en regel taal, thema en de menubalk.",
+    en: "One clear settings window. Set up your rules, design your appearances, add reminders, and manage language, theme and the menu bar."
+  },
+  "shot1.h": { nl: "Regels met voorrang", en: "Rules with priority" },
+  "shot1.p": {
+    nl: "Meerdere regels, de bovenste die past wint. Filter op titel, agenda, dagen of geaccepteerd — en kies schermvullend, notificatie of negeren.",
+    en: "Multiple rules, the topmost match wins. Filter by title, calendar, days or accepted — and choose full screen, notification or ignore."
+  },
+  "shot1.alt": { nl: "Instellingen — tabblad Regels.", en: "Settings — Rules tab." },
+  "shot2.h": { nl: "Eigen weergaven", en: "Your own appearances" },
+  "shot2.p": {
+    nl: "Gradient, geblurd scherm, afbeelding of effen kleur. Bepaal wat er op het scherm komt en koppel een weergave aan een regel.",
+    en: "Gradient, blurred screen, image or solid colour. Decide what appears on screen and link an appearance to a rule."
+  },
+  "shot2.alt": { nl: "Instellingen — tabblad Weergave.", en: "Settings — Appearance tab." },
+  "shot3.h": { nl: "Custom herinneringen", en: "Custom reminders" },
+  "shot3.p": {
+    nl: "Voeg snel iets toe dat niet in je agenda staat. Bonk waarschuwt ervoor net als voor een gewone meeting.",
+    en: "Quickly add something that isn't in your calendar. Bonk alerts you just like for a regular meeting."
+  },
+  "shot3.alt": { nl: "Instellingen — tabblad Herinneringen.", en: "Settings — Reminders tab." },
+  "shot4.h": { nl: "Taal, thema &amp; menubalk", en: "Language, theme &amp; menu bar" },
+  "shot4.p": {
+    nl: "Nederlands of Engels, licht of donker, en kies wat de menubalk toont. Plus automatisch starten bij inloggen.",
+    en: "Dutch or English, light or dark, and choose what the menu bar shows. Plus automatic start at login."
+  },
+  "shot4.alt": { nl: "Instellingen — tabblad Algemeen.", en: "Settings — General tab." },
+
+  "free.h": { nl: "Gratis. En dat blijft zo.", en: "Free. And it stays that way." },
+  "free.p": {
+    nl: "Bonk is <strong>volledig gratis</strong> en <strong>advertentievrij</strong>. Geen abonnement, geen \"pro\"-versie achter een betaalmuur. Gewoon een fijn hulpmiddel dat ervoor zorgt dat je op tijd in je meeting zit.",
+    en: "Bonk is <strong>completely free</strong> and <strong>ad-free</strong>. No subscription, no \"pro\" version behind a paywall. Just a pleasant tool that gets you into your meeting on time."
+  },
+  "free.li1": { nl: "Geen advertenties of trackers", en: "No ads or trackers" },
+  "free.li2": { nl: "Geen account of inlog", en: "No account or login" },
+  "free.li3": { nl: "Geen in-app aankopen", en: "No in-app purchases" },
+  "free.li4": { nl: "Geen verzamelde agenda-gegevens", en: "No collected calendar data" },
+  "price.sub": { nl: "voor altijd", en: "forever" },
+  "price.note": { nl: "Vereist macOS 14 of nieuwer", en: "Requires macOS 14 or newer" },
+
+  "privacy.h": { nl: "Privacy by design", en: "Privacy by design" },
+  "privacy.p": {
+    nl: "Bonk leest je agenda rechtstreeks op je eigen Mac via EventKit — er gaat niets naar een server. Geen account, geen tracking, geen profielen. Ook de geblurde achtergrond wordt lokaal van je scherm gemaakt en verlaat je apparaat niet.",
+    en: "Bonk reads your calendar directly on your own Mac via EventKit — nothing goes to a server. No account, no tracking, no profiles. The blurred background is also made locally from your screen and never leaves your device."
+  },
+
+  "dl.h": { nl: "Klaar om nooit meer een meeting te missen?", en: "Ready to never miss a meeting again?" },
+  "dl.intro": {
+    nl: "Download Bonk en stel je eerste regel in een minuut in.",
+    en: "Download Bonk and set up your first rule in a minute."
+  },
+  "dl.note": { nl: "Gratis · privacyvriendelijk · macOS 14+", en: "Free · privacy-friendly · macOS 14+" },
+
+  "doc.title": { nl: "Bonk — mis nooit meer een meeting", en: "Bonk — never miss a meeting" },
+  "doc.desc": {
+    nl: "Bonk waarschuwt je vlak voor een meeting met een schermvullende melding of notificatie — met één klik joinen, snoozen of negeren. Slimme regels per agenda, eigen weergaven en custom herinneringen. Gratis en privacyvriendelijk.",
+    en: "Bonk warns you right before a meeting with a full-screen alert or notification — join, snooze or ignore in one click. Smart rules per calendar, custom appearances and reminders. Free and privacy-friendly."
+  }
+};
+
+function applyLang(lang) {
+  document.documentElement.lang = lang;
+  document.querySelectorAll("[data-i18n]").forEach(function (el) {
+    var t = I18N[el.getAttribute("data-i18n")];
+    if (t && t[lang] != null) el.innerHTML = t[lang];
+  });
+  document.querySelectorAll("[data-i18n-alt]").forEach(function (el) {
+    var t = I18N[el.getAttribute("data-i18n-alt")];
+    if (t && t[lang] != null) el.setAttribute("alt", t[lang]);
+  });
+  document.querySelectorAll("[data-shot]").forEach(function (img) {
+    img.src = "assets/shots/" + img.getAttribute("data-shot") + "-" + lang + ".png";
+  });
+  if (I18N["doc.title"]) document.title = I18N["doc.title"][lang];
+  var desc = document.querySelector('meta[name="description"]');
+  if (desc && I18N["doc.desc"]) desc.setAttribute("content", I18N["doc.desc"][lang]);
+  document.querySelectorAll("[data-lang-btn]").forEach(function (b) {
+    b.classList.toggle("active", b.getAttribute("data-lang-btn") === lang);
+    b.setAttribute("aria-pressed", b.getAttribute("data-lang-btn") === lang ? "true" : "false");
+  });
+  try { localStorage.setItem("bonk-lang", lang); } catch (e) {}
+}
+
+(function () {
+  var saved = null;
+  try { saved = localStorage.getItem("bonk-lang"); } catch (e) {}
+  var lang = saved || ((navigator.language || "nl").toLowerCase().indexOf("en") === 0 ? "en" : "nl");
+  document.querySelectorAll("[data-lang-btn]").forEach(function (b) {
+    b.addEventListener("click", function () { applyLang(b.getAttribute("data-lang-btn")); });
+  });
+  applyLang(lang);
+})();
+</script>
+
+</body>
+</html>

@@ -1,6 +1,21 @@
+# ── macOS ──────────────────────────────────────────────
+.DS_Store
+.AppleDouble
+Icon?
+
+# ── Claude Code (machine-local config) ─────────────────
+.claude/settings.local.json
+
+# ── Swift / SwiftPM (app/) ─────────────────────────────
 .build/
+.swiftpm/
+DerivedData/
+*.xcuserstate
+
+# Generated app bundle + icon intermediate (AppIcon.icns IS committed)
 Bonk.app/
 Bonk.iconset/
-.DS_Store
-*.xcuserstate
-.swiftpm/
+
+# ── Editors / misc ─────────────────────────────────────
+*.swp
+*~

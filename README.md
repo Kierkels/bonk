@@ -1,56 +1,44 @@
 # Bonk
 
-Een macOS menubar-app (à la [inyourface.app](https://www.inyourface.app/)) die je
-agenda leest en je vlak vóór een meeting waarschuwt — schermvullend en "in your
-face", of via een subtiele notificatie. Met één klik joinen (Google Meet / Zoom /
-Teams / Webex), snoozen of negeren.
+Een macOS-menubalk-app die je vlak vóór een meeting waarschuwt — schermvullend en
+"in your face", of via een subtiele notificatie — met één klik joinen, snoozen of
+negeren. Plus de bijbehorende marketingwebsite.
 
-## Bouwen & starten
+De repo is opgesplitst in twee mappen:
+
+| Map | Inhoud |
+|---|---|
+| [`app/`](app/) | De Swift-app (SwiftPM-package, `build.sh`, icoon, bronnen). Zie [`app/README.md`](app/README.md). |
+| [`website/`](website/) | De statische marketingsite (`index.html`, `styles.css`, `assets/`). |
+
+## Snel starten
 
 ```bash
-./scripts/build-app.sh        # bouwt Bonk.app (release)
-open ./Bonk.app               # start de app (menubar-icoon + agenda-prompt)
+# App bouwen, installeren in /Applications en starten:
+./app/build.sh
+
+# Website lokaal bekijken:
+open website/index.html
 ```
 
-Geef bij de eerste start agendatoegang. De app verschijnt als belletje in de
-menubalk (geen dock-icoon). Test het overlay direct via **menubar → "Test-overlay
-tonen"**.
+## Website-deploy
 
-## Hoe het werkt
+De site wordt automatisch naar **Cloudflare Pages** gepubliceerd (live op
+**https://bonk.kierkels.app**) door de GitHub Action
+[`.github/workflows/deploy-website.yml`](.github/workflows/deploy-website.yml),
+bij elke push naar `main` die `website/**` raakt (of handmatig via *Run workflow*).
 
-- **Agenda**: leest via EventKit alle agenda's die je Mac synct, inclusief je
-  Google-account uit Systeeminstellingen → Internetaccounts. Geen OAuth nodig.
-- **Regels** (Instellingen → Regels): meerdere regels, de bovenste passende wint.
-  Per regel instelbaar:
-  - titel bevat "…"
-  - alleen geaccepteerde meetings
-  - bepaalde dagen van de week
-  - minuten van tevoren
-  - stijl: **schermvullend** of **subtiele notificatie**
-  - automatisch joinen op starttijd
-- **Join-links** worden uit de notities/locatie/URL van de afspraak gehaald
-  (Meet, Zoom, Teams, Webex).
+Eenmalige setup: zet de repo-secrets `CLOUDFLARE_API_TOKEN` en
+`CLOUDFLARE_ACCOUNT_ID`, en koppel daarna `bonk.kierkels.app` als custom domain
+aan het Pages-project `bonk`. Details staan boven in het workflow-bestand.
 
-## Projectstructuur
+## App-release
 
-```
-Sources/Bonk/
-  BonkApp.swift            App-entry (MenuBarExtra + Settings-scene)
-  AppDelegate.swift        Coördinator: pollt agenda, matcht regels, vuurt alerts
-  Models/                  AlertStyle, MeetingRule, UpcomingEvent, SettingsStore
-  Calendar/                CalendarManager (EventKit) + LinkDetector
-  UI/                      OverlayWindow/View, BannerNotifier, MenuView, SettingsView
-Resources/Info.plist       Bundle-config (LSUIElement, agenda-usage strings)
-scripts/build-app.sh       Bouwt + bundelt + ad-hoc signeert Bonk.app
-```
-
-## Bekende vervolgstappen / ideeën
-
-- Versleepbare regelvolgorde
-- Directe Google Calendar API (OAuth) voor rijkere accepted-status/join-links
-- Focus-modus respecteren; niet waarschuwen tijdens een lopende meeting
-- App-icoon en notarisatie voor distributie
-- Negeerlijst op trefwoord (bv. `[hold]`, `lunch`)
+Bij elke push naar `main` die `app/**` raakt bouwt
+[`.github/workflows/release-app.yml`](.github/workflows/release-app.yml) `Bonk.app`,
+pakt 'm in een `.dmg` en publiceert een GitHub Release met de versie uit de app
+(`CFBundleShortVersionString`, ingesteld in [`app/build.sh`](app/build.sh)). Bump
+die versie om een nieuw release-tag (`vX.Y`) te maken.
 
 ## Licentie
 

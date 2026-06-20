@@ -1,0 +1,74 @@
+# Builds Bonk.app on macOS, packages it as a .dmg, and publishes a GitHub
+# Release tagged with the version shown in the app (CFBundleShortVersionString).
+# Runs on every push to main that touches app/**, or manually.
+#
+# Bump the version in app/build.sh (CFBundleShortVersionString / CFBundleVersion)
+# to cut a new release tag; pushing app changes without bumping updates the DMG
+# on the existing version's release.
+#
+# Note: the app is ad-hoc signed (no paid Apple Developer ID), so the DMG is not
+# notarized — on first launch users right-click the app → Open.
+
+name: Release app
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'app/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-app
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: macos-15
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Toolchain info
+        run: swift --version
+
+      - name: Build Bonk.app
+        run: ./app/build.sh          # CI=true → assembles the bundle, no install/launch
+
+      - name: Read app version
+        id: ver
+        run: |
+          V=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" app/Bonk.app/Contents/Info.plist)
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          echo "App version: $V"
+
+      - name: Package DMG
+        run: |
+          V='${{ steps.ver.outputs.version }}'
+          rm -rf dmg && mkdir dmg
+          cp -R app/Bonk.app dmg/
+          ln -s /Applications dmg/Applications
+          hdiutil create -volname "Bonk $V" -srcfolder dmg -ov -format UDZO "Bonk-$V.dmg"
+          ls -lh "Bonk-$V.dmg"
+
+      - name: Publish GitHub Release
+        run: |
+          V='${{ steps.ver.outputs.version }}'
+          TAG="v$V"
+          NOTES="Automatische build van **Bonk $V** voor macOS 14+.
+
+          Download \`Bonk-$V.dmg\` hieronder, open de DMG en sleep Bonk naar Programma's.
+
+          > De app is ad-hoc gesigneerd (geen betaald Apple Developer-account), dus niet genotariseerd. Bij de eerste keer openen: **rechtsklik op Bonk → Openen** en bevestig."
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG exists — updating asset."
+            gh release upload "$TAG" "Bonk-$V.dmg" --clobber
+            gh release edit "$TAG" --title "Bonk $V" --notes "$NOTES" --latest
+          else
+            echo "Creating release $TAG."
+            gh release create "$TAG" "Bonk-$V.dmg" --title "Bonk $V" --notes "$NOTES" --latest
+          fi

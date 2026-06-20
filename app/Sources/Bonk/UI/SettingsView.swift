@@ -11,7 +11,12 @@ struct SettingsView: View {
     @ObservedObject var calendar: CalendarManager
     var onTest: (OverlayAppearance) -> Void = { _ in }
 
-    @State private var selection: Tab? = .general
+    @State private var selection: Tab? = {
+        if let arg = CommandLine.arguments.first(where: { $0.hasPrefix("--tab=") }) {
+            return Tab(rawValue: String(arg.dropFirst("--tab=".count))) ?? .general
+        }
+        return .general
+    }()
     @State private var launchAtLogin = false
     @State private var editingRule: MeetingRule?
     @State private var editingReminder: CustomReminder?

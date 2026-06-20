@@ -38,6 +38,6 @@ security import "$TMP/bonk.p12" -k "$HOME/Library/Keychains/login.keychain-db" \
     -P bonk -T /usr/bin/codesign
 
 echo
-echo "Klaar. Bouw opnieuw met ./scripts/build-app.sh."
+echo "Klaar. Bouw opnieuw met ./app/build.sh."
 echo "Bij de eerste build vraagt de keychain eenmalig toestemming — kies 'Always Allow'."
 echo "Geef daarna Bonk schermopname-toegang; die blijft nu behouden over builds heen."

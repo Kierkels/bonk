@@ -1,0 +1,73 @@
+# Publishes the static marketing site (website/) to Cloudflare Pages on every
+# push to main that touches the site. Can also be run manually.
+#
+# One-time setup:
+#   1. Cloudflare → create an API token with "Account · Cloudflare Pages · Edit".
+#   2. Add two GitHub repo secrets:
+#        CLOUDFLARE_API_TOKEN   = <the token>
+#        CLOUDFLARE_ACCOUNT_ID  = <your Cloudflare account id>
+#   3. The first successful run creates the Pages project "bonk".
+#      Then add the custom domain  bonk.kierkels.app  (kierkels.app must be a
+#      zone on this Cloudflare account) — the workflow attaches it automatically.
+
+name: Deploy website
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'website/**'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-website
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  deployments: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://bonk.kierkels.app
+    steps:
+      - uses: actions/checkout@v4
+
+      # Create the Pages project on first run (idempotent: ignored if it exists).
+      - name: Ensure Pages project exists
+        run: |
+          code=$(curl -sS -o /tmp/proj.json -w '%{http_code}' -X POST \
+            "https://api.cloudflare.com/client/v4/accounts/${{ secrets.CLOUDFLARE_ACCOUNT_ID }}/pages/projects" \
+            -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_API_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            --data '{"name":"bonk","production_branch":"main"}')
+          echo "HTTP $code"; cat /tmp/proj.json; echo
+          if [ "$code" = "200" ] || grep -qiE 'already|exist|duplicate' /tmp/proj.json; then
+            echo "✓ project ready"
+          else
+            echo "::error::Could not create Pages project (HTTP $code)"; exit 1
+          fi
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy website --project-name=bonk --branch=main
+
+      - name: Ensure custom domain bonk.kierkels.app
+        run: |
+          resp=$(curl -sS -o /tmp/cf.json -w '%{http_code}' -X POST \
+            "https://api.cloudflare.com/client/v4/accounts/${{ secrets.CLOUDFLARE_ACCOUNT_ID }}/pages/projects/bonk/domains" \
+            -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_API_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            --data '{"name":"bonk.kierkels.app"}')
+          echo "HTTP $resp"; cat /tmp/cf.json; echo
+          if [ "$resp" = "200" ] || grep -qiE 'already|exist|duplicate' /tmp/cf.json; then
+            echo "✓ custom domain attached"
+          else
+            echo "::warning::Custom domain not attached (HTTP $resp). Check the API token can edit Pages and that kierkels.app is a zone on this account."
+          fi

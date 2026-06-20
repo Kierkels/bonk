@@ -104,6 +104,54 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
             observeCalendarChanges()
             observeSettings()
             tick()
+            handleLaunchFlags()
+        }
+    }
+
+    /// Hulp voor het maken van screenshots: `--open-settings` / `--overlay`.
+    private func handleLaunchFlags() {
+        let args = CommandLine.arguments
+        if args.contains("--overlay") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
+                guard let self else { return }
+                self.testOverlay(appearance: self.settingsStore.settings.appearances.first ?? .default)
+            }
+        }
+        if args.contains("--overlay1") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
+                guard let self else { return }
+                let demo = UpcomingEvent(
+                    id: "demo", title: "Sprint Review",
+                    start: Date().addingTimeInterval(60), end: Date().addingTimeInterval(1860),
+                    calendarTitle: "Q42", calendarID: "demo", isAccepted: true,
+                    joinURL: URL(string: "https://meet.google.com/abc-defg-hij"),
+                    location: "AMS-1-02 - The Marble Room (8)",
+                    notes: "Even syncen over de planning voor volgende sprint.",
+                    weekday: 2
+                )
+                self.overlay.show(
+                    event: demo,
+                    rule: self.settingsStore.settings.rules.first ?? MeetingRule(),
+                    appearance: self.settingsStore.settings.appearances.first ?? .default,
+                    lang: self.settingsStore.lang,
+                    onJoin: {}, onSnooze: { _ in }, onDismiss: {}
+                )
+            }
+        }
+        if args.contains("--open-settings") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
+                guard let self else { return }
+                let view = SettingsView(store: self.settingsStore, calendar: self.calendar, onTest: { _ in })
+                let win = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 720, height: 600),
+                                   styleMask: [.titled, .closable], backing: .buffered, defer: false)
+                win.title = "Bonk"
+                win.contentView = NSHostingView(rootView: view)
+                win.isReleasedWhenClosed = false
+                win.center()
+                self.shotWindow = win
+                NSApp.activate(ignoringOtherApps: true)
+                win.makeKeyAndOrderFront(nil)
+            }
         }
     }
 
@@ -330,6 +378,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
     }
 
     private var reminderWindow: NSWindow?
+    private var shotWindow: NSWindow?
 
     /// Opent een los venster om snel een herinnering toe te voegen (vanuit het menu).
     func openReminderEditor() {
