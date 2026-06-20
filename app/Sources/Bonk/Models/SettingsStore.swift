@@ -114,9 +114,6 @@ final class SettingsStore: ObservableObject {
 
     /// Actieve taal (override of systeem; standaard Engels buiten NL).
     var lang: Lang {
-        if let arg = CommandLine.arguments.first(where: { $0.hasPrefix("--lang=") }) {
-            return arg.hasSuffix("en") ? .en : .nl
-        }
         switch settings.languageOverride {
         case "nl": return .nl
         case "en": return .en

@@ -16,8 +16,7 @@ struct BonkApp: App {
 
         Settings {
             SettingsView(store: appDelegate.settingsStore,
-                         calendar: appDelegate.calendar,
-                         onTest: { appDelegate.testOverlay(appearance: $0) })
+                         calendar: appDelegate.calendar)
         }
     }
 }

@@ -9,14 +9,8 @@ import EventKit
 struct SettingsView: View {
     @ObservedObject var store: SettingsStore
     @ObservedObject var calendar: CalendarManager
-    var onTest: (OverlayAppearance) -> Void = { _ in }
 
-    @State private var selection: Tab? = {
-        if let arg = CommandLine.arguments.first(where: { $0.hasPrefix("--tab=") }) {
-            return Tab(rawValue: String(arg.dropFirst("--tab=".count))) ?? .general
-        }
-        return .general
-    }()
+    @State private var selection: Tab? = .general
     @State private var launchAtLogin = false
     @State private var editingRule: MeetingRule?
     @State private var editingReminder: CustomReminder?
@@ -83,7 +77,7 @@ struct SettingsView: View {
         case .reminders:
             remindersTab
         case .appearance:
-            AppearanceTab(store: store, onTest: onTest)
+            AppearanceTab(store: store)
         default:
             Form {
                 switch selection ?? .general {
@@ -418,7 +412,6 @@ struct SettingsView: View {
 
 private struct AppearanceTab: View {
     @ObservedObject var store: SettingsStore
-    var onTest: (OverlayAppearance) -> Void
     @State private var editing: OverlayAppearance?
     private var lang: Lang { store.lang }
 
@@ -451,7 +444,7 @@ private struct AppearanceTab: View {
         }
         .formStyle(.grouped)
         .sheet(item: $editing) { appearance in
-            AppearanceEditorView(store: store, appearance: appearance, onTest: onTest)
+            AppearanceEditorView(store: store, appearance: appearance)
         }
     }
 
@@ -477,16 +470,14 @@ private struct AppearanceTab: View {
 
 private struct AppearanceEditorView: View {
     @ObservedObject var store: SettingsStore
-    var onTest: (OverlayAppearance) -> Void
     @State private var draft: OverlayAppearance
     @State private var previewShot: NSImage?
     @State private var showImporter = false
     @State private var permissionAsked = false
     @Environment(\.dismiss) private var dismiss
 
-    init(store: SettingsStore, appearance: OverlayAppearance, onTest: @escaping (OverlayAppearance) -> Void) {
+    init(store: SettingsStore, appearance: OverlayAppearance) {
         self.store = store
-        self.onTest = onTest
         _draft = State(initialValue: appearance)
     }
 
@@ -502,12 +493,6 @@ private struct AppearanceEditorView: View {
                         .frame(height: 150)
                         .clipShape(RoundedRectangle(cornerRadius: 10))
                         .listRowInsets(EdgeInsets())
-                    Button {
-                        onTest(draft)
-                    } label: {
-                        Label(L("Test op volledig scherm", "Test full screen", lang), systemImage: "play.rectangle")
-                            .frame(maxWidth: .infinity)
-                    }
                 }
 
                 Section(L("Naam", "Name", lang)) {

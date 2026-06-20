@@ -51,12 +51,6 @@ struct MenuView: View {
                 Label(L("Herinnering toevoegen…", "Add reminder…", lang), systemImage: "alarm")
             }
 
-            Button {
-                app.testOverlay(appearance: store.settings.appearances.first ?? .default)
-            } label: {
-                Label(L("Test: 2 meetings (schermvullend)", "Test: 2 meetings (full screen)", lang), systemImage: "rectangle.on.rectangle")
-            }
-
             Button { openSettingsReliably() } label: {
                 Label(L("Instellingen…", "Settings…", lang), systemImage: "gearshape")
             }
