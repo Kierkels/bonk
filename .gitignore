@@ -1,0 +1,6 @@
+.build/
+Bonk.app/
+Bonk.iconset/
+.DS_Store
+*.xcuserstate
+.swiftpm/
