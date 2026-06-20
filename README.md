@@ -51,3 +51,9 @@ scripts/build-app.sh       Bouwt + bundelt + ad-hoc signeert Bonk.app
 - Focus-modus respecteren; niet waarschuwen tijdens een lopende meeting
 - App-icoon en notarisatie voor distributie
 - Negeerlijst op trefwoord (bv. `[hold]`, `lunch`)
+
+## Licentie
+
+MIT — zie [LICENSE](LICENSE).
+
+© 2026 Roland Kierkels
