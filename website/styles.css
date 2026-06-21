@@ -101,6 +101,17 @@ a { color: inherit; text-decoration: none; }
   box-shadow: var(--shadow);
   border: 1px solid var(--line);
 }
+.hero-shot-menu { max-width: 360px; }
+
+/* Overlay banner (under hero) */
+.overlay-banner { padding: 0 0 84px; }
+.overlay-banner-title {
+  text-align: center; color: var(--slate); font-size: 1.1rem; margin: 0 0 20px;
+}
+.overlay-banner-img {
+  display: block; width: 100%; max-width: 900px; height: auto; margin: 0 auto;
+  border-radius: 16px; border: 1px solid var(--line); box-shadow: var(--shadow);
+}
 
 /* Sections */
 .section { padding: 92px 0; }
