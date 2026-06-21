@@ -73,12 +73,14 @@ final class MeetingEngineTests: XCTestCase {
         s.reminderLeadMinutes = 0
         s.reminderSound = "Glass"
         s.reminderNotifyWhenLocked = true
+        s.reminderRepeatSound = true
         let r = MeetingEngine.reminderRule(from: s)
         XCTAssertEqual(r.id, MeetingEngine.reminderRuleID)
         XCTAssertEqual(r.alertStyle, .banner)
         XCTAssertEqual(r.leadMinutes, 0)
         XCTAssertEqual(r.notificationSound, "Glass")
         XCTAssertTrue(r.notifyWhenLocked)
+        XCTAssertTrue(r.repeatSound)
     }
 
     func testReminderLeadZeroFiresAtStart() {

@@ -228,6 +228,8 @@ struct MenuView: View {
             VStack(spacing: 0) {
                 ForEach(Array(items.enumerated()), id: \.element.id) { index, event in
                     HStack(spacing: 10) {
+                        RoundedRectangle(cornerRadius: 2).fill(calendarColor(event.calendarID))
+                            .frame(width: 3)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(event.title).font(.callout).lineLimit(1)
                             HStack(spacing: 5) {
@@ -367,6 +369,10 @@ struct MenuView: View {
             df.locale = Locale(identifier: lang == .en ? "en_US" : "nl_NL")
             df.dateFormat = "EEE d MMM"
             day = df.string(from: event.start)
+        }
+        // Momentpunt (zoals een herinnering): alleen het tijdstip, geen reeks.
+        if event.end <= event.start {
+            return "\(day) · \(f.string(from: event.start))"
         }
         return "\(day) · \(f.string(from: event.start)) – \(f.string(from: event.end))"
     }

@@ -136,7 +136,9 @@ struct MeetingRowView: View {
         var parts: [String] = []
         if appearance.showTime {
             let f = DateFormatter(); f.dateFormat = "HH:mm"
-            parts.append("\(f.string(from: event.start)) – \(f.string(from: event.end))")
+            parts.append(event.end <= event.start
+                ? f.string(from: event.start)
+                : "\(f.string(from: event.start)) – \(f.string(from: event.end))")
         }
         if appearance.showLocation,
            let loc = event.location?.trimmingCharacters(in: .whitespacesAndNewlines), !loc.isEmpty {
@@ -322,6 +324,7 @@ struct MeetingCardView: View {
     private var timeRange: String {
         let f = DateFormatter()
         f.dateFormat = "HH:mm"
+        if event.end <= event.start { return f.string(from: event.start) }
         return "\(f.string(from: event.start)) – \(f.string(from: event.end))"
     }
 

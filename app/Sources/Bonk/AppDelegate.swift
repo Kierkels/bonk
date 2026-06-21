@@ -219,6 +219,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
         writeDiagnostics(events, now: now)
 
         let reminderRule = MeetingEngine.reminderRule(from: settingsStore.settings)
+        var shownReminderIDs: Set<UUID> = []     // getoonde herinneringen → consumeren
         for event in events {
             // Herinneringen volgen de globale herinnering-regel, niet de meeting-regels.
             let rule: MeetingRule?
@@ -230,21 +231,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
             guard let rule else { continue }
             let key = event.id + "|" + rule.id.uuidString
 
+            func didFire() {
+                firedKeys.insert(key)
+                fire(event: event, rule: rule)
+                if let uuid = MeetingEngine.reminderUUID(fromEventID: event.id) { shownReminderIDs.insert(uuid) }
+            }
+
             switch MeetingEngine.decision(for: event, rule: rule, now: now,
                                           snoozeUntil: snoozeUntil[event.id],
                                           alreadyFired: firedKeys.contains(key)) {
             case .none, .stillSnoozed:
                 continue
             case .fire:
-                firedKeys.insert(key)
-                fire(event: event, rule: rule)
+                didFire()
             case .snoozeEnded(let shouldFire):
                 snoozeUntil[event.id] = nil
-                if shouldFire {
-                    firedKeys.insert(key)
-                    fire(event: event, rule: rule)
-                }
+                if shouldFire { didFire() }
             }
+        }
+
+        // Een herinnering heeft geen duur: zodra getoond is hij weg (tenzij gesnoozed,
+        // dan is hij al verzet). Gemiste herinneringen (app stond uit) ruimen we ook op.
+        let graceCutoff = now.addingTimeInterval(-120)
+        var remainingReminders = settingsStore.settings.reminders
+        remainingReminders.removeAll { shownReminderIDs.contains($0.id) || $0.date < graceCutoff }
+        if remainingReminders.count != settingsStore.settings.reminders.count {
+            settingsStore.settings.reminders = remainingReminders
         }
 
         if firedKeys.count > 300 { firedKeys.removeAll() }
@@ -292,9 +304,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
             break
         }
         // Geluid hoort bij élke waarschuwing (notificatie én schermvullend), en
-        // werkt ook bij een vergrendeld scherm.
+        // werkt ook bij een vergrendeld scherm. Herhalen (alarm) alleen bij
+        // schermvullend — daar kun je het stoppen door te reageren.
         if rule.alertStyle != .ignore {
-            AlertSound.play(rule.notificationSound)
+            AlertSound.play(rule.notificationSound,
+                            repeating: rule.alertStyle == .fullScreen && rule.repeatSound,
+                            forceAudible: rule.overrideMute)
         }
     }
 
@@ -322,30 +337,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
                 appearance: appearance,
                 lang: settingsStore.lang,
                 backdrops: backs,
-                onJoin: { if let u = event.joinURL { NSWorkspace.shared.open(u) } },
-                onSnooze: { [weak self] mins in self?.snooze(event: event, minutes: mins) },
+                onJoin: { AlertSound.stop(); if let u = event.joinURL { NSWorkspace.shared.open(u) } },
+                onSnooze: { [weak self] mins in AlertSound.stop(); self?.snooze(event: event, minutes: mins) },
                 // Herinnering: "Sluiten" sluit alleen het overlay (de herinnering blijft
                 // staan en wordt niet genegeerd/verwijderd). Meeting: "Negeren".
                 onDismiss: { [weak self] in
+                    AlertSound.stop()
                     if !MeetingEngine.isReminderID(event.id) { self?.dismissEvent(event) }
                 }
             )
         }
     }
 
-    /// Zet custom reminders om naar events (binnen hetzelfde 48u-venster).
+    /// Zet custom reminders om naar events. Een herinnering is een momentpunt
+    /// (geen duur), dus `end == start`. De levensduur wordt niet via de eindtijd
+    /// geregeld maar door consumeren-bij-vuren (in `tick`).
     private func reminderEvents(now: Date) -> [UpcomingEvent] {
         let cal = Calendar.current
         let horizon = now.addingTimeInterval(48 * 3600)
         return settingsStore.settings.reminders.compactMap { reminder -> UpcomingEvent? in
-            let end = reminder.date.addingTimeInterval(900)   // 15 min "duur"
-            guard end > now, reminder.date < horizon else { return nil }
+            guard reminder.date < horizon else { return nil }
             let title = reminder.title.trimmingCharacters(in: .whitespaces)
             return UpcomingEvent(
                 id: "reminder:\(reminder.id.uuidString)",
                 title: title.isEmpty ? "Herinnering" : title,
                 start: reminder.date,
-                end: end,
+                end: reminder.date,
                 calendarTitle: "Herinnering",
                 calendarID: "bonk.reminder",
                 isAccepted: true,
@@ -413,8 +430,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
     }
 
     private func snooze(event: UpcomingEvent, minutes: Int) {
-        snoozeUntil[event.id] = Date().addingTimeInterval(Double(minutes) * 60)
+        let newDate = Date().addingTimeInterval(Double(minutes) * 60)
         firedKeys = firedKeys.filter { !$0.hasPrefix(event.id + "|") }
+
+        // Herinnering: snoozen = verzetten (hij is bij vuren al verwijderd, dus
+        // we plannen 'm opnieuw in op het nieuwe tijdstip). Meeting: gewone snooze.
+        if let uuid = MeetingEngine.reminderUUID(fromEventID: event.id) {
+            let reminder = CustomReminder(id: uuid, title: event.title,
+                                          notes: event.notes ?? "", date: newDate)
+            if settingsStore.settings.reminders.contains(where: { $0.id == uuid }) {
+                settingsStore.updateReminder(reminder)
+            } else {
+                settingsStore.addReminder(reminder)
+            }
+            tick()
+            return
+        }
+        snoozeUntil[event.id] = newDate
     }
 
     private var reminderWindow: NSWindow?

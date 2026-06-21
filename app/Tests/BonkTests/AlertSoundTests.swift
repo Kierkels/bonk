@@ -19,5 +19,6 @@ final class AlertSoundTests: XCTestCase {
         let r = MeetingRule()
         XCTAssertFalse(r.notifyWhenLocked)
         XCTAssertEqual(r.notificationSound, "default")
+        XCTAssertFalse(r.repeatSound)
     }
 }

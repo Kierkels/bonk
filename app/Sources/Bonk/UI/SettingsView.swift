@@ -403,6 +403,15 @@ struct SettingsView: View {
                     .help(L("Geluid afspelen", "Play sound", lang))
                 }
 
+                if store.settings.reminderSound != AlertSound.noneChoice {
+                    if store.settings.reminderAlertStyle == .fullScreen {
+                        Toggle(L("Herhaal het geluid tot je reageert (alarm)", "Repeat the sound until you respond (alarm)", lang),
+                               isOn: $store.settings.reminderRepeatSound)
+                    }
+                    Toggle(L("Speel ook als je Mac gedempt staat", "Play even when your Mac is muted", lang),
+                           isOn: $store.settings.reminderOverrideMute)
+                }
+
                 if store.settings.reminderAlertStyle == .fullScreen {
                     Toggle(L("Ook waarschuwen op vergrendeld scherm", "Also alert on the lock screen", lang),
                            isOn: $store.settings.reminderNotifyWhenLocked)
@@ -821,6 +830,15 @@ private struct RuleEditorView: View {
                             }
                             .buttonStyle(.borderless)
                             .help(L("Geluid afspelen", "Play sound", lang))
+                        }
+
+                        if draft.notificationSound != AlertSound.noneChoice {
+                            if draft.alertStyle == .fullScreen {
+                                Toggle(L("Herhaal het geluid tot je reageert (alarm)", "Repeat the sound until you respond (alarm)", lang),
+                                       isOn: $draft.repeatSound)
+                            }
+                            Toggle(L("Speel ook als je Mac gedempt staat", "Play even when your Mac is muted", lang),
+                                   isOn: $draft.overrideMute)
                         }
 
                         if draft.alertStyle == .fullScreen {

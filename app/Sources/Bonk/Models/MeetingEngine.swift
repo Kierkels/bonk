@@ -165,6 +165,8 @@ enum MeetingEngine {
         r.appearanceID = s.reminderAppearanceID
         r.notificationSound = s.reminderSound
         r.notifyWhenLocked = s.reminderNotifyWhenLocked
+        r.repeatSound = s.reminderRepeatSound
+        r.overrideMute = s.reminderOverrideMute
         return r
     }
 

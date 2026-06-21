@@ -16,6 +16,8 @@ struct MeetingRule: Codable, Identifiable, Equatable {
     var calendarID: String? = nil         // alleen deze agenda; nil = alle agenda's
     var notifyWhenLocked: Bool = false    // bij vergrendeld scherm: notificatie + geluid (overlay zie je dan toch niet)
     var notificationSound: String = "default"  // "default" / "none" / NSSound-naam (bv. "Glass")
+    var repeatSound: Bool = false         // schermvullend: geluid herhalen (als alarm) tot je reageert
+    var overrideMute: Bool = false        // geluid ook spelen als de Mac gedempt staat (tijdelijk unmuten)
 
     func matches(_ event: UpcomingEvent) -> Bool {
         guard isEnabled else { return false }
@@ -48,5 +50,7 @@ extension MeetingRule {
         calendarID = try c.decodeIfPresent(String.self, forKey: .calendarID)
         notifyWhenLocked = try c.decodeIfPresent(Bool.self, forKey: .notifyWhenLocked) ?? false
         notificationSound = try c.decodeIfPresent(String.self, forKey: .notificationSound) ?? "default"
+        repeatSound = try c.decodeIfPresent(Bool.self, forKey: .repeatSound) ?? false
+        overrideMute = try c.decodeIfPresent(Bool.self, forKey: .overrideMute) ?? false
     }
 }

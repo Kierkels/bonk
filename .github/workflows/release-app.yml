@@ -70,20 +70,20 @@ jobs:
           PREV=$(git tag --sort=-creatordate | grep -vx "$TAG" | head -1)
           if [ -n "$PREV" ]; then
             CHANGES=$(git log --no-merges --pretty='- %s' "$PREV"..HEAD)
-            CHANGE_HEADER="## Wijzigingen sinds $PREV"
+            CHANGE_HEADER="## Changes since $PREV"
           else
             CHANGES=$(git log --no-merges --pretty='- %s' -20)
-            CHANGE_HEADER="## Wijzigingen"
+            CHANGE_HEADER="## Changes"
           fi
-          [ -z "$CHANGES" ] && CHANGES="- (geen losse wijzigingen)"
+          [ -z "$CHANGES" ] && CHANGES="- (no individual changes)"
 
           NOTES="$CHANGE_HEADER
           $CHANGES
 
           ---
-          Download \`Bonk-$V.dmg\` hieronder, open de DMG en sleep Bonk naar Programma's.
+          Download \`Bonk-$V.dmg\` below, open the DMG and drag Bonk to Applications.
 
-          > De app is ad-hoc gesigneerd (geen betaald Apple Developer-account), dus niet genotariseerd. Bij de eerste keer openen: **rechtsklik op Bonk → Openen** en bevestig."
+          > The app is ad-hoc signed (no paid Apple Developer account), so it isn't notarized. On first launch: **right-click Bonk → Open** and confirm."
           if gh release view "$TAG" >/dev/null 2>&1; then
             echo "Release $TAG exists — updating asset."
             gh release upload "$TAG" "Bonk-$V.dmg" --clobber

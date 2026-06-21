@@ -40,6 +40,8 @@ struct AppSettings: Codable {
     var reminderAppearanceID: UUID? = nil
     var reminderSound: String = "default"
     var reminderNotifyWhenLocked: Bool = false
+    var reminderRepeatSound: Bool = false
+    var reminderOverrideMute: Bool = false
     var calendarColors: [String: String] = [:]   // calendarID → hex-kleur in het menu
     var calendarsMigrated: Bool = false           // eenmalige migratie naar "leeg = geen"
     var languageOverride: String = "system"       // system / nl / en
@@ -78,7 +80,7 @@ struct AppSettings: Codable {
     enum CodingKeys: String, CodingKey {
         case rules, enabledCalendarIDs, globalEnabled, appearances, menuBarStyle, menuBarOnlyToday, reminders, calendarColors, calendarsMigrated, languageOverride, appearanceOverride
         case menuBarHighlightEnabled, menuBarHighlightMinutes, menuBarHighlightColorMode, menuBarHighlightColorHex
-        case reminderAlertStyle, reminderLeadMinutes, reminderAppearanceID, reminderSound, reminderNotifyWhenLocked
+        case reminderAlertStyle, reminderLeadMinutes, reminderAppearanceID, reminderSound, reminderNotifyWhenLocked, reminderRepeatSound, reminderOverrideMute
     }
     private enum LegacyKeys: String, CodingKey {
         case overlayAppearance
@@ -103,6 +105,8 @@ struct AppSettings: Codable {
         reminderAppearanceID = try c.decodeIfPresent(UUID.self, forKey: .reminderAppearanceID)
         reminderSound = try c.decodeIfPresent(String.self, forKey: .reminderSound) ?? "default"
         reminderNotifyWhenLocked = try c.decodeIfPresent(Bool.self, forKey: .reminderNotifyWhenLocked) ?? false
+        reminderRepeatSound = try c.decodeIfPresent(Bool.self, forKey: .reminderRepeatSound) ?? false
+        reminderOverrideMute = try c.decodeIfPresent(Bool.self, forKey: .reminderOverrideMute) ?? false
         calendarColors = try c.decodeIfPresent([String: String].self, forKey: .calendarColors) ?? [:]
         calendarsMigrated = try c.decodeIfPresent(Bool.self, forKey: .calendarsMigrated) ?? false
         languageOverride = try c.decodeIfPresent(String.self, forKey: .languageOverride) ?? "system"

@@ -69,6 +69,7 @@ final class OverlayController {
     private func closeAll() { close() }
 
     private func close() {
+        AlertSound.stop()            // stop een eventueel herhalend alarm
         windows.forEach { $0.orderOut(nil) }
         windows = []
         screens = []
