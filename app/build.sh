@@ -34,8 +34,8 @@ cat > "${APP}/Contents/Info.plist" <<'PLIST'
     <key>CFBundleExecutable</key>         <string>Bonk</string>
     <key>CFBundleIconFile</key>           <string>AppIcon</string>
     <key>CFBundlePackageType</key>        <string>APPL</string>
-    <key>CFBundleShortVersionString</key> <string>1.0</string>
-    <key>CFBundleVersion</key>            <string>1</string>
+    <key>CFBundleShortVersionString</key> <string>1.1</string>
+    <key>CFBundleVersion</key>            <string>2</string>
     <key>NSHumanReadableCopyright</key>   <string>© 2026 Roland Kierkels</string>
     <key>LSMinimumSystemVersion</key>     <string>14.0</string>
     <key>LSUIElement</key>                <true/>
@@ -65,14 +65,23 @@ if [ -n "${CI:-}" ]; then
   exit 0
 fi
 
-echo "▸ Installeren in /Applications…"
+echo "▸ Huidige instance stoppen…"
 osascript -e "tell application \"${APP_NAME}\" to quit" >/dev/null 2>&1 || true
 pkill -x "${BIN_NAME}" >/dev/null 2>&1 || true
+# Wacht tot het proces echt weg is (max ~3s) zodat er geen dubbele
+# menubalk-instance ontstaat als we meteen opnieuw starten.
+for _ in $(seq 1 30); do
+  pgrep -x "${BIN_NAME}" >/dev/null 2>&1 || break
+  sleep 0.1
+done
+pkill -9 -x "${BIN_NAME}" >/dev/null 2>&1 || true
+
+echo "▸ Installeren in /Applications…"
 rm -rf "/Applications/${APP}"
 cp -R "${APP}" "/Applications/${APP}"
 
 echo "▸ Starten…"
-open "/Applications/${APP}"
+open -n "/Applications/${APP}"
 
 echo "✓ Built, geïnstalleerd en gestart: /Applications/${APP}"
 echo "  Autostart: Instellingen → Algemeen → Starten bij inloggen"

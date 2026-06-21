@@ -9,6 +9,7 @@ import Combine
 final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUserNotificationCenterDelegate {
     let settingsStore = SettingsStore()
     let calendar = CalendarManager()
+    let updateChecker = UpdateChecker()
     private let overlay = OverlayController()
 
     @Published var nextEvent: UpcomingEvent?
@@ -104,6 +105,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
             observeCalendarChanges()
             observeSettings()
             tick()
+            await updateChecker.check(lang: settingsStore.lang)
         }
     }
 
@@ -197,6 +199,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
         }
 
         if firedKeys.count > 300 { firedKeys.removeAll() }
+
+        updateChecker.checkIfDue(lang: settingsStore.lang)
     }
 
     private func fire(event: UpcomingEvent, rule: MeetingRule) {
@@ -366,6 +370,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
     func userNotificationCenter(_ center: UNUserNotificationCenter,
                                 didReceive response: UNNotificationResponse) async {
         let id = response.notification.request.identifier
+        let info = response.notification.request.content.userInfo
+
+        // Update-notificatie: klik (of "Downloaden") opent de release-pagina.
+        if let s = info["updateURL"] as? String, let url = URL(string: s) {
+            if response.actionIdentifier == BannerNotifier.updateAction
+                || response.actionIdentifier == UNNotificationDefaultActionIdentifier {
+                NSWorkspace.shared.open(url)
+            }
+            return
+        }
+
         func openJoin() {
             if let s = response.notification.request.content.userInfo["joinURL"] as? String,
                let url = URL(string: s) {

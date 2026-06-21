@@ -5,8 +5,10 @@ import UserNotifications
 enum BannerNotifier {
     static let joinCategory = "MEETING_JOIN"
     static let plainCategory = "MEETING"
+    static let updateCategory = "BONK_UPDATE"
     static let joinAction = "JOIN"
     static let dismissAction = "DISMISS"
+    static let updateAction = "OPEN_UPDATE"
 
     static func requestAuth(lang: Lang) {
         let center = UNUserNotificationCenter.current()
@@ -22,7 +24,27 @@ enum BannerNotifier {
                                            actions: [dismiss],
                                            intentIdentifiers: [],
                                            options: [.customDismissAction])
-        center.setNotificationCategories([withJoin, plain])
+        let download = UNNotificationAction(identifier: updateAction,
+                                            title: L("Downloaden", "Download", lang),
+                                            options: [.foreground])
+        let update = UNNotificationCategory(identifier: updateCategory,
+                                            actions: [download],
+                                            intentIdentifiers: [],
+                                            options: [])
+        center.setNotificationCategories([withJoin, plain, update])
+    }
+
+    /// Meldt dat er een nieuwe versie van Bonk klaarstaat.
+    static func showUpdate(version: String, url: URL?, lang: Lang) {
+        let content = UNMutableNotificationContent()
+        content.title = L("Nieuwe versie van Bonk", "New version of Bonk", lang)
+        content.body = L("Versie \(version) is beschikbaar. Klik om te downloaden.",
+                         "Version \(version) is available. Click to download.", lang)
+        content.sound = .default
+        content.categoryIdentifier = updateCategory
+        if let url { content.userInfo = ["updateURL": url.absoluteString] }
+        let req = UNNotificationRequest(identifier: "bonk.update.\(version)", content: content, trigger: nil)
+        UNUserNotificationCenter.current().add(req)
     }
 
     static func show(event: UpcomingEvent, lang: Lang) {

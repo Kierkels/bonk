@@ -8,7 +8,8 @@ struct BonkApp: App {
         MenuBarExtra {
             MenuView(app: appDelegate,
                      store: appDelegate.settingsStore,
-                     calendar: appDelegate.calendar)
+                     calendar: appDelegate.calendar,
+                     updates: appDelegate.updateChecker)
         } label: {
             MenuBarLabel(app: appDelegate)
         }
@@ -16,7 +17,8 @@ struct BonkApp: App {
 
         Settings {
             SettingsView(store: appDelegate.settingsStore,
-                         calendar: appDelegate.calendar)
+                         calendar: appDelegate.calendar,
+                         updates: appDelegate.updateChecker)
         }
     }
 }
@@ -32,6 +34,9 @@ private struct MenuBarLabel: View {
                 Image(systemName: "bell.fill")
                 Text(text)
             }
+            .padding(.horizontal, 7)
+            .padding(.vertical, 2)
+            .background(Color.primary.opacity(0.14), in: Capsule())
         } else {
             Image(systemName: "bell.fill")
         }

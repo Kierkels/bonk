@@ -9,6 +9,7 @@ import EventKit
 struct SettingsView: View {
     @ObservedObject var store: SettingsStore
     @ObservedObject var calendar: CalendarManager
+    @ObservedObject var updates: UpdateChecker
 
     @State private var selection: Tab? = .general
     @State private var launchAtLogin = false
@@ -116,6 +117,31 @@ struct SettingsView: View {
                     Button(L("Toegang vragen", "Request access", lang)) { Task { await calendar.requestAccess() } }
                 }
             }
+        }
+
+        Section(L("Updates", "Updates", lang)) {
+            LabeledContent(L("Status", "Status", lang)) {
+                if updates.isChecking {
+                    Text(L("Controleren…", "Checking…", lang)).foregroundStyle(.secondary)
+                } else if let version = updates.availableVersion, let url = updates.releaseURL {
+                    Button {
+                        NSWorkspace.shared.open(url)
+                    } label: {
+                        Label(L("Versie \(version) downloaden", "Download version \(version)", lang),
+                              systemImage: "arrow.down.circle.fill")
+                    }
+                } else if updates.lastCheckFailed {
+                    Label(L("Controle mislukt", "Check failed", lang), systemImage: "exclamationmark.triangle")
+                        .foregroundStyle(.secondary)
+                } else {
+                    Label(L("Je gebruikt de nieuwste versie", "You're on the latest version", lang),
+                          systemImage: "checkmark.circle.fill").foregroundStyle(.green)
+                }
+            }
+            Button(L("Nu controleren op updates", "Check for updates now", lang)) {
+                Task { await updates.check(notify: false, lang: lang) }
+            }
+            .disabled(updates.isChecking)
         }
 
         Section {

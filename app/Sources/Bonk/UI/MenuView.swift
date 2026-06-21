@@ -5,6 +5,7 @@ struct MenuView: View {
     @ObservedObject var app: AppDelegate
     @ObservedObject var store: SettingsStore
     @ObservedObject var calendar: CalendarManager
+    @ObservedObject var updates: UpdateChecker
     @Environment(\.openSettings) private var openSettings
 
     private let accent = Color(hex: "#7C3AED")
@@ -13,6 +14,10 @@ struct MenuView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             header
+
+            if let version = updates.availableVersion, let url = updates.releaseURL {
+                updateBanner(version: version, url: url)
+            }
 
             Divider()
 
@@ -75,6 +80,29 @@ struct MenuView: View {
                 .toggleStyle(.switch)
                 .labelsHidden()
         }
+    }
+
+    private func updateBanner(version: String, url: URL) -> some View {
+        Button {
+            NSWorkspace.shared.open(url)
+        } label: {
+            HStack(spacing: 9) {
+                Image(systemName: "arrow.down.circle.fill").font(.title3)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(L("Update beschikbaar", "Update available", lang))
+                        .font(.callout.weight(.semibold))
+                    Text(L("Versie \(version) — nu downloaden", "Version \(version) — download now", lang))
+                        .font(.caption2).foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(accent.opacity(0.15), in: RoundedRectangle(cornerRadius: 10))
+            .foregroundStyle(accent)
+        }
+        .buttonStyle(.plain)
+        .help(L("Open de downloadpagina", "Open the download page", lang))
     }
 
     private var emptyState: some View {
