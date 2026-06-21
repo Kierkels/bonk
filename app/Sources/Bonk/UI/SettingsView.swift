@@ -171,6 +171,33 @@ struct SettingsView: View {
                    "What appears next to the icon for the next meeting. With ‘only today’ the menu bar shows nothing if the meeting isn't today.", lang))
         }
 
+        Section {
+            Toggle(L("Gekleurde achtergrond bij een nabije meeting", "Coloured background for an upcoming meeting", lang),
+                   isOn: $store.settings.menuBarHighlightEnabled)
+            if store.settings.menuBarHighlightEnabled {
+                Stepper(value: $store.settings.menuBarHighlightMinutes, in: 1...120) {
+                    LabeledContent(L("Vanaf", "Starting", lang),
+                                   value: L("\(store.settings.menuBarHighlightMinutes) min vóór de meeting",
+                                            "\(store.settings.menuBarHighlightMinutes) min before the meeting", lang))
+                }
+                Picker(L("Kleur", "Colour", lang), selection: $store.settings.menuBarHighlightColorMode) {
+                    Text(L("Agenda-kleur", "Calendar colour", lang)).tag("calendar")
+                    Text(L("Eigen kleur", "Custom colour", lang)).tag("custom")
+                }
+                if store.settings.menuBarHighlightColorMode == "custom" {
+                    ColorPicker(L("Eigen kleur", "Custom colour", lang), selection: Binding(
+                        get: { Color(hex: store.settings.menuBarHighlightColorHex) },
+                        set: { store.settings.menuBarHighlightColorHex = $0.hexString }
+                    ), supportsOpacity: false)
+                }
+            }
+        } header: {
+            Text(L("Menubalk-markering", "Menu bar highlight", lang))
+        } footer: {
+            Text(L("Kleurt de achtergrond achter het menubalk-icoon zodra de eerstvolgende meeting binnen de ingestelde tijd valt. Bij ‘agenda-kleur’ wordt de achtergrond wit als er meerdere meetings tegelijk uit verschillende agenda’s zijn.",
+                   "Colours the background behind the menu bar icon once the next meeting is within the set time. With ‘calendar colour’ the background turns white when several meetings start at once from different calendars.", lang))
+        }
+
         Section(L("Opstarten", "Startup", lang)) {
             Toggle(L("Starten bij inloggen", "Launch at login", lang), isOn: $launchAtLogin)
                 .onChange(of: launchAtLogin) { _, newValue in setLaunchAtLogin(newValue) }

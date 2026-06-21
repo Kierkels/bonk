@@ -62,6 +62,38 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
         }
     }
 
+    /// Achtergrondkleur achter het menubalk-icoon wanneer de eerstvolgende meeting
+    /// binnen de ingestelde tijd valt. Nil = geen gekleurde markering.
+    /// - Agenda-modus: kleur van de agenda; wit als er meerdere meetings tegelijk
+    ///   uit verschillende agenda's zijn.
+    /// - Eigen modus: de zelfgekozen kleur.
+    var menuBarHighlightColor: Color? {
+        let s = settingsStore.settings
+        guard s.globalEnabled, s.menuBarHighlightEnabled, let n = nextEvent else { return nil }
+        if s.menuBarOnlyToday, !Calendar.current.isDateInToday(n.start) { return nil }
+        let minutesUntil = n.start.timeIntervalSinceNow / 60
+        guard minutesUntil <= Double(s.menuBarHighlightMinutes) else { return nil }
+
+        if s.menuBarHighlightColorMode == "custom" {
+            return Color(hex: s.menuBarHighlightColorHex)
+        }
+        // Agenda-modus: meerdere tegelijk uit verschillende agenda's → wit.
+        let simultaneous = upcoming.filter { abs($0.start.timeIntervalSince(n.start)) < 60 }
+        let calendarIDs = Set(simultaneous.map { $0.calendarID })
+        if calendarIDs.count > 1 { return .white }
+        return calendarColor(n.calendarID)
+    }
+
+    /// Kleur van een agenda (eventuele eigen kleur uit instellingen, anders die van
+    /// de agenda zelf). Spiegelt de logica in het menu.
+    private func calendarColor(_ id: String) -> Color {
+        if let hex = settingsStore.settings.calendarColors[id] { return Color(hex: hex) }
+        if let cal = calendar.calendars.first(where: { $0.calendarIdentifier == id }) {
+            return Color(cal.color)
+        }
+        return Color(hex: "#7C3AED")
+    }
+
     private func truncatedTitle(_ title: String, max: Int = 24) -> String {
         title.count > max ? String(title.prefix(max - 1)) + "…" : title
     }
@@ -340,8 +372,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
         let cal = Calendar.current
         let soon = cal.date(byAdding: .minute, value: 30, to: Date()) ?? Date()
         let date = cal.date(bySetting: .second, value: 0, of: soon) ?? soon
-        let reminder = CustomReminder(date: date)
+        presentReminderEditor(CustomReminder(date: date))
+    }
 
+    /// Opent de editor voor een bestaande herinnering (vanuit het menu).
+    func editReminder(id: String) {
+        let uuidString = id.hasPrefix("reminder:") ? String(id.dropFirst("reminder:".count)) : id
+        guard let uuid = UUID(uuidString: uuidString),
+              let reminder = settingsStore.settings.reminders.first(where: { $0.id == uuid }) else { return }
+        presentReminderEditor(reminder)
+    }
+
+    private func presentReminderEditor(_ reminder: CustomReminder) {
+        let isExisting = settingsStore.settings.reminders.contains { $0.id == reminder.id }
         let view = ReminderEditorView(store: settingsStore, reminder: reminder) { [weak self] in
             self?.reminderWindow?.close()
             self?.reminderWindow = nil
@@ -351,7 +394,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
             styleMask: [.titled, .closable],
             backing: .buffered, defer: false
         )
-        win.title = L("Nieuwe herinnering", "New reminder", settingsStore.lang)
+        win.title = isExisting
+            ? L("Herinnering bewerken", "Edit reminder", settingsStore.lang)
+            : L("Nieuwe herinnering", "New reminder", settingsStore.lang)
         win.contentView = NSHostingView(rootView: view)
         win.isReleasedWhenClosed = false
         win.center()

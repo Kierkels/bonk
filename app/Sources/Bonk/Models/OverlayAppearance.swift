@@ -124,6 +124,13 @@ extension Color {
         return String(format: "#%02X%02X%02X", r, g, b)
     }
 
+    /// Zwart of wit — afhankelijk van wat het best leesbaar is op deze achtergrond.
+    var readableForeground: Color {
+        let ns = NSColor(self).usingColorSpace(.sRGB) ?? .black
+        let lum = 0.299 * ns.redComponent + 0.587 * ns.greenComponent + 0.114 * ns.blueComponent
+        return lum > 0.6 ? .black : .white
+    }
+
     /// Meng deze kleur met een andere NSColor (0 = ongewijzigd, 1 = volledig de andere).
     func blended(with other: NSColor, fraction: CGFloat) -> Color {
         let ns = NSColor(self).usingColorSpace(.sRGB) ?? .black

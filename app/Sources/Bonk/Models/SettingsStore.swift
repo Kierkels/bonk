@@ -29,6 +29,10 @@ struct AppSettings: Codable {
     var appearances: [OverlayAppearance]  // herbruikbare weergave-presets
     var menuBarStyle: MenuBarStyle = .countdown
     var menuBarOnlyToday: Bool = false    // niets tonen als de meeting niet vandaag is
+    var menuBarHighlightEnabled: Bool = false      // gekleurde achtergrond als meeting nabij is
+    var menuBarHighlightMinutes: Int = 5           // "nabij" = binnen zoveel minuten
+    var menuBarHighlightColorMode: String = "calendar"  // calendar | custom
+    var menuBarHighlightColorHex: String = "#E72677"    // eigen kleur (mode = custom)
     var reminders: [CustomReminder] = []  // zelf toegevoegde herinneringen
     var calendarColors: [String: String] = [:]   // calendarID → hex-kleur in het menu
     var calendarsMigrated: Bool = false           // eenmalige migratie naar "leeg = geen"
@@ -67,6 +71,7 @@ struct AppSettings: Codable {
 
     enum CodingKeys: String, CodingKey {
         case rules, enabledCalendarIDs, globalEnabled, appearances, menuBarStyle, menuBarOnlyToday, reminders, calendarColors, calendarsMigrated, languageOverride, appearanceOverride
+        case menuBarHighlightEnabled, menuBarHighlightMinutes, menuBarHighlightColorMode, menuBarHighlightColorHex
     }
     private enum LegacyKeys: String, CodingKey {
         case overlayAppearance
@@ -81,6 +86,10 @@ struct AppSettings: Codable {
         globalEnabled = try c.decodeIfPresent(Bool.self, forKey: .globalEnabled) ?? true
         menuBarStyle = try c.decodeIfPresent(MenuBarStyle.self, forKey: .menuBarStyle) ?? .countdown
         menuBarOnlyToday = try c.decodeIfPresent(Bool.self, forKey: .menuBarOnlyToday) ?? false
+        menuBarHighlightEnabled = try c.decodeIfPresent(Bool.self, forKey: .menuBarHighlightEnabled) ?? false
+        menuBarHighlightMinutes = try c.decodeIfPresent(Int.self, forKey: .menuBarHighlightMinutes) ?? 5
+        menuBarHighlightColorMode = try c.decodeIfPresent(String.self, forKey: .menuBarHighlightColorMode) ?? "calendar"
+        menuBarHighlightColorHex = try c.decodeIfPresent(String.self, forKey: .menuBarHighlightColorHex) ?? "#E72677"
         reminders = try c.decodeIfPresent([CustomReminder].self, forKey: .reminders) ?? []
         calendarColors = try c.decodeIfPresent([String: String].self, forKey: .calendarColors) ?? [:]
         calendarsMigrated = try c.decodeIfPresent(Bool.self, forKey: .calendarsMigrated) ?? false

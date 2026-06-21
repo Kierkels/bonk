@@ -146,6 +146,17 @@ struct MenuView: View {
                     Text(timeRange(event)).font(.subheadline).foregroundStyle(.secondary)
                 }
                 Spacer(minLength: 0)
+                if event.id.hasPrefix("reminder:") {
+                    Button {
+                        app.editReminder(id: event.id)
+                    } label: {
+                        Image(systemName: "pencil")
+                            .font(.body)
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .help(L("Herinnering bewerken", "Edit reminder", lang))
+                }
                 Button {
                     app.skipMeeting(id: event.id)
                 } label: {
@@ -154,7 +165,7 @@ struct MenuView: View {
                         .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
-                .help(L("Negeren (geen waarschuwing)", "Ignore (no alert)", lang))
+                .help(reminderOrMeetingIgnoreHelp(event))
             }
             .fixedSize(horizontal: false, vertical: true)
 
@@ -231,6 +242,15 @@ struct MenuView: View {
                         if event.joinURL != nil {
                             Image(systemName: "video.fill").font(.caption2).foregroundStyle(.secondary)
                         }
+                        if event.id.hasPrefix("reminder:") {
+                            Button {
+                                app.editReminder(id: event.id)
+                            } label: {
+                                Image(systemName: "pencil").font(.callout).foregroundStyle(.secondary)
+                            }
+                            .buttonStyle(.plain)
+                            .help(L("Herinnering bewerken", "Edit reminder", lang))
+                        }
                         Button {
                             app.skipMeeting(id: event.id)
                         } label: {
@@ -238,7 +258,7 @@ struct MenuView: View {
                                 .font(.callout).foregroundStyle(.secondary)
                         }
                         .buttonStyle(.plain)
-                        .help(L("Negeren", "Ignore", lang))
+                        .help(reminderOrMeetingIgnoreHelp(event))
                     }
                     .padding(.vertical, 7)
                     .contentShape(Rectangle())
@@ -308,6 +328,12 @@ struct MenuView: View {
         df.locale = Locale(identifier: lang == .en ? "en_US" : "nl_NL")
         df.dateFormat = "EEE HH:mm"
         return df.string(from: event.start)
+    }
+
+    private func reminderOrMeetingIgnoreHelp(_ event: UpcomingEvent) -> String {
+        event.id.hasPrefix("reminder:")
+            ? L("Herinnering verwijderen", "Delete reminder", lang)
+            : L("Negeren (geen waarschuwing)", "Ignore (no alert)", lang)
     }
 
     private func metaLine(icon: String, text: String) -> some View {
