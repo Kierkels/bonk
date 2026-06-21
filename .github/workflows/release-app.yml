@@ -32,6 +32,8 @@ jobs:
       GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # volledige historie + tags nodig voor de changelog
 
       - name: Toolchain info
         run: swift --version
@@ -62,8 +64,23 @@ jobs:
         run: |
           V='${{ steps.ver.outputs.version }}'
           TAG="v$V"
-          NOTES="Automatische build van **Bonk $V** voor macOS 14+.
 
+          # Changelog: alle commits sinds de vorige release-tag (sluit de huidige
+          # tag uit voor het geval we een bestaande release bijwerken).
+          PREV=$(git tag --sort=-creatordate | grep -vx "$TAG" | head -1)
+          if [ -n "$PREV" ]; then
+            CHANGES=$(git log --no-merges --pretty='- %s' "$PREV"..HEAD)
+            CHANGE_HEADER="## Wijzigingen sinds $PREV"
+          else
+            CHANGES=$(git log --no-merges --pretty='- %s' -20)
+            CHANGE_HEADER="## Wijzigingen"
+          fi
+          [ -z "$CHANGES" ] && CHANGES="- (geen losse wijzigingen)"
+
+          NOTES="$CHANGE_HEADER
+          $CHANGES
+
+          ---
           Download \`Bonk-$V.dmg\` hieronder, open de DMG en sleep Bonk naar Programma's.
 
           > De app is ad-hoc gesigneerd (geen betaald Apple Developer-account), dus niet genotariseerd. Bij de eerste keer openen: **rechtsklik op Bonk → Openen** en bevestig."

@@ -54,7 +54,8 @@ enum BannerNotifier {
         content.body = event.joinURL != nil
             ? L("Klik om te joinen", "Click to join", lang)
             : L("Komt eraan", "Coming up", lang)
-        content.sound = .default
+        content.sound = nil                          // geluid speelt Bonk zelf af (AlertSound.play)
+        content.interruptionLevel = .timeSensitive   // prominenter op lock screen / bij Focus
         content.categoryIdentifier = event.joinURL != nil ? joinCategory : plainCategory
         if let url = event.joinURL {
             content.userInfo = ["joinURL": url.absoluteString]

@@ -355,8 +355,8 @@ struct SettingsView: View {
         Form {
             HStack(alignment: .top, spacing: 10) {
                 Image(systemName: "info.circle.fill").foregroundStyle(.blue)
-                Text(L("Herinneringen staan níét in je agenda, maar worden net zo behandeld als meetings. Toevoegen kan via het Bonk-menu.",
-                       "Reminders aren't in your calendar but are treated like meetings. Add them via the Bonk menu.", lang))
+                Text(L("Herinneringen staan níét in je agenda en volgen de waarschuwingsregels niet. De weergave hieronder geldt voor álle herinneringen. Toevoegen kan via het Bonk-menu.",
+                       "Reminders aren't in your calendar and don't follow the alert rules. The display below applies to all reminders. Add them via the Bonk menu.", lang))
                     .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 0)
             }
@@ -366,6 +366,53 @@ struct SettingsView: View {
             .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Color.blue.opacity(0.25)))
             .listRowBackground(Color.clear)
             .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 10, trailing: 0))
+
+            Section {
+                Picker(L("Actie", "Action", lang), selection: $store.settings.reminderAlertStyle) {
+                    Text(AlertStyle.fullScreen.label(lang)).tag(AlertStyle.fullScreen)
+                    Text(AlertStyle.banner.label(lang)).tag(AlertStyle.banner)
+                }
+                .pickerStyle(.segmented)
+
+                Stepper(value: $store.settings.reminderLeadMinutes, in: 0...60) {
+                    Text(L("Waarschuw \(store.settings.reminderLeadMinutes) min van tevoren",
+                           "Alert \(store.settings.reminderLeadMinutes) min before", lang))
+                }
+
+                if store.settings.reminderAlertStyle == .fullScreen {
+                    Picker(L("Weergave", "Appearance", lang), selection: Binding(
+                        get: { store.settings.reminderAppearanceID ?? store.settings.appearances.first?.id },
+                        set: { store.settings.reminderAppearanceID = $0 }
+                    )) {
+                        ForEach(store.settings.appearances) { appearance in
+                            Text(appearance.name).tag(Optional(appearance.id))
+                        }
+                    }
+                }
+
+                HStack {
+                    Picker(L("Geluid", "Sound", lang), selection: $store.settings.reminderSound) {
+                        ForEach(AlertSound.allChoices, id: \.self) { choice in
+                            Text(AlertSound.label(choice, lang)).tag(choice)
+                        }
+                    }
+                    Button { AlertSound.preview(store.settings.reminderSound) } label: {
+                        Image(systemName: "play.circle")
+                    }
+                    .buttonStyle(.borderless)
+                    .help(L("Geluid afspelen", "Play sound", lang))
+                }
+
+                if store.settings.reminderAlertStyle == .fullScreen {
+                    Toggle(L("Ook waarschuwen op vergrendeld scherm", "Also alert on the lock screen", lang),
+                           isOn: $store.settings.reminderNotifyWhenLocked)
+                }
+            } header: {
+                Text(L("Weergave van herinneringen", "Reminder display", lang))
+            } footer: {
+                Text(L("Geldt voor alle herinneringen. Met 0 min verschijnt de waarschuwing op het tijdstip zelf.",
+                       "Applies to all reminders. With 0 min the alert appears at the time itself.", lang))
+            }
 
             Section {
                 if store.settings.reminders.isEmpty {
@@ -759,6 +806,27 @@ private struct RuleEditorView: View {
                             }
                         }
                         Toggle(L("Automatisch joinen op starttijd", "Auto-join at start time", lang), isOn: $draft.autoJoin)
+
+                        // Geluid bij deze waarschuwing (notificatie én schermvullend).
+                        HStack {
+                            Picker(L("Geluid", "Sound", lang), selection: $draft.notificationSound) {
+                                ForEach(AlertSound.allChoices, id: \.self) { choice in
+                                    Text(AlertSound.label(choice, lang)).tag(choice)
+                                }
+                            }
+                            Button {
+                                AlertSound.preview(draft.notificationSound)
+                            } label: {
+                                Image(systemName: "play.circle")
+                            }
+                            .buttonStyle(.borderless)
+                            .help(L("Geluid afspelen", "Play sound", lang))
+                        }
+
+                        if draft.alertStyle == .fullScreen {
+                            Toggle(L("Ook waarschuwen op vergrendeld scherm", "Also alert on the lock screen", lang),
+                                   isOn: $draft.notifyWhenLocked)
+                        }
                     }
                 } header: {
                     Text(L("Actie", "Action", lang))
@@ -766,6 +834,9 @@ private struct RuleEditorView: View {
                     if draft.alertStyle == .ignore {
                         Text(L("Meetings die op deze regel passen worden automatisch genegeerd (geen waarschuwing).",
                                "Meetings matching this rule are automatically ignored (no alert).", lang))
+                    } else if draft.alertStyle == .fullScreen && draft.notifyWhenLocked {
+                        Text(L("Bij een vergrendeld scherm zie je het overlay niet; Bonk stuurt dan een notificatie met dit geluid. Of de notificatie op het vergrendelscherm verschijnt hangt af van Systeeminstellingen → Notificaties → Bonk.",
+                               "While the screen is locked you won't see the overlay; Bonk sends a notification with this sound instead. Whether it appears on the lock screen depends on System Settings → Notifications → Bonk.", lang))
                     }
                 }
 

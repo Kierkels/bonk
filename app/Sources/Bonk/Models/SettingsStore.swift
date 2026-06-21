@@ -34,6 +34,12 @@ struct AppSettings: Codable {
     var menuBarHighlightColorMode: String = "calendar"  // calendar | custom
     var menuBarHighlightColorHex: String = "#E72677"    // eigen kleur (mode = custom)
     var reminders: [CustomReminder] = []  // zelf toegevoegde herinneringen
+    // Globale weergave van herinneringen (los van de meeting-regels; geldt voor álle herinneringen).
+    var reminderAlertStyle: AlertStyle = .fullScreen
+    var reminderLeadMinutes: Int = 0
+    var reminderAppearanceID: UUID? = nil
+    var reminderSound: String = "default"
+    var reminderNotifyWhenLocked: Bool = false
     var calendarColors: [String: String] = [:]   // calendarID → hex-kleur in het menu
     var calendarsMigrated: Bool = false           // eenmalige migratie naar "leeg = geen"
     var languageOverride: String = "system"       // system / nl / en
@@ -72,6 +78,7 @@ struct AppSettings: Codable {
     enum CodingKeys: String, CodingKey {
         case rules, enabledCalendarIDs, globalEnabled, appearances, menuBarStyle, menuBarOnlyToday, reminders, calendarColors, calendarsMigrated, languageOverride, appearanceOverride
         case menuBarHighlightEnabled, menuBarHighlightMinutes, menuBarHighlightColorMode, menuBarHighlightColorHex
+        case reminderAlertStyle, reminderLeadMinutes, reminderAppearanceID, reminderSound, reminderNotifyWhenLocked
     }
     private enum LegacyKeys: String, CodingKey {
         case overlayAppearance
@@ -91,6 +98,11 @@ struct AppSettings: Codable {
         menuBarHighlightColorMode = try c.decodeIfPresent(String.self, forKey: .menuBarHighlightColorMode) ?? "calendar"
         menuBarHighlightColorHex = try c.decodeIfPresent(String.self, forKey: .menuBarHighlightColorHex) ?? "#E72677"
         reminders = try c.decodeIfPresent([CustomReminder].self, forKey: .reminders) ?? []
+        reminderAlertStyle = try c.decodeIfPresent(AlertStyle.self, forKey: .reminderAlertStyle) ?? .fullScreen
+        reminderLeadMinutes = try c.decodeIfPresent(Int.self, forKey: .reminderLeadMinutes) ?? 0
+        reminderAppearanceID = try c.decodeIfPresent(UUID.self, forKey: .reminderAppearanceID)
+        reminderSound = try c.decodeIfPresent(String.self, forKey: .reminderSound) ?? "default"
+        reminderNotifyWhenLocked = try c.decodeIfPresent(Bool.self, forKey: .reminderNotifyWhenLocked) ?? false
         calendarColors = try c.decodeIfPresent([String: String].self, forKey: .calendarColors) ?? [:]
         calendarsMigrated = try c.decodeIfPresent(Bool.self, forKey: .calendarsMigrated) ?? false
         languageOverride = try c.decodeIfPresent(String.self, forKey: .languageOverride) ?? "system"

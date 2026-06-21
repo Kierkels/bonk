@@ -50,6 +50,21 @@ enum MeetingEngine {
         return Classification(upcoming: upcoming, skipped: skipped)
     }
 
+    /// Wat er in het menu staat: agenda-meetings volgen de regels, herinneringen
+    /// staan **altijd** in "volgende" (los van de regels, en nooit in "genegeerd").
+    static func visibleEvents(calendarEvents: [UpcomingEvent],
+                              reminders: [UpcomingEvent],
+                              now: Date,
+                              rules: [MeetingRule],
+                              dismissed: Set<String>,
+                              forceShown: Set<String>) -> Classification {
+        let cal = classify(events: calendarEvents, now: now, rules: rules,
+                           dismissed: dismissed, forceShown: forceShown)
+        let liveReminders = reminders.filter { $0.end > now }
+        let upcoming = (cal.upcoming + liveReminders).sorted { $0.start < $1.start }
+        return Classification(upcoming: upcoming, skipped: cal.skipped)
+    }
+
     // MARK: - Vuren & snooze
 
     enum AlertDecision: Equatable {
@@ -77,6 +92,39 @@ enum MeetingEngine {
         return .none
     }
 
+    /// Het eerstvolgende moment waarop er iets moet afgaan (vuurtijd van de
+    /// eerstvolgende waarschuwing, of het einde van een snooze). Hiermee kan een
+    /// exacte timer worden gezet zodat een waarschuwing vrijwel op de seconde komt
+    /// i.p.v. pas bij de volgende periodieke controle. Nil = niets gepland.
+    static func nextWake(events: [UpcomingEvent],
+                         now: Date,
+                         rules: [MeetingRule],
+                         dismissed: Set<String>,
+                         forceShown: Set<String>,
+                         reminderRule: MeetingRule,
+                         snoozeUntil: [String: Date]) -> Date? {
+        var soonest: Date? = nil
+        for e in events {
+            let rule: MeetingRule?
+            if isReminderID(e.id) {
+                rule = reminderRule.alertStyle == .ignore ? nil : reminderRule
+            } else {
+                rule = warnRule(for: e, rules: rules, dismissed: dismissed, forceShown: forceShown)
+            }
+            guard let rule else { continue }
+
+            let candidate: Date?
+            if let snz = snoozeUntil[e.id], snz > now {
+                candidate = snz
+            } else {
+                let fireTime = e.start.addingTimeInterval(-Double(rule.leadMinutes) * 60)
+                candidate = fireTime > now ? fireTime : nil
+            }
+            if let c = candidate { soonest = soonest.map { min($0, c) } ?? c }
+        }
+        return soonest
+    }
+
     // MARK: - Menubalk-markering
 
     enum HighlightChoice: Equatable {
@@ -102,6 +150,23 @@ enum MeetingEngine {
     }
 
     // MARK: - Herinneringen
+
+    /// Vaste id voor de pseudo-regel van herinneringen (stabiel voor `firedKeys`-dedup).
+    static let reminderRuleID = UUID(uuidString: "11111111-1111-1111-1111-111111111111")!
+
+    /// De waarschuwingsregel die herinneringen volgen, afgeleid van de globale
+    /// herinnering-instellingen (níét van de meeting-regels).
+    static func reminderRule(from s: AppSettings) -> MeetingRule {
+        var r = MeetingRule()
+        r.id = reminderRuleID
+        r.name = "__reminder__"
+        r.alertStyle = s.reminderAlertStyle
+        r.leadMinutes = s.reminderLeadMinutes
+        r.appearanceID = s.reminderAppearanceID
+        r.notificationSound = s.reminderSound
+        r.notifyWhenLocked = s.reminderNotifyWhenLocked
+        return r
+    }
 
     static let reminderIDPrefix = "reminder:"
 

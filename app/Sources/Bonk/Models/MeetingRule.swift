@@ -14,6 +14,8 @@ struct MeetingRule: Codable, Identifiable, Equatable {
     var autoJoin: Bool = false            // open de link automatisch op starttijd
     var appearanceID: UUID? = nil         // welke weergave-preset (alleen bij schermvullend)
     var calendarID: String? = nil         // alleen deze agenda; nil = alle agenda's
+    var notifyWhenLocked: Bool = false    // bij vergrendeld scherm: notificatie + geluid (overlay zie je dan toch niet)
+    var notificationSound: String = "default"  // "default" / "none" / NSSound-naam (bv. "Glass")
 
     func matches(_ event: UpcomingEvent) -> Bool {
         guard isEnabled else { return false }
@@ -44,5 +46,7 @@ extension MeetingRule {
         autoJoin = try c.decodeIfPresent(Bool.self, forKey: .autoJoin) ?? false
         appearanceID = try c.decodeIfPresent(UUID.self, forKey: .appearanceID)
         calendarID = try c.decodeIfPresent(String.self, forKey: .calendarID)
+        notifyWhenLocked = try c.decodeIfPresent(Bool.self, forKey: .notifyWhenLocked) ?? false
+        notificationSound = try c.decodeIfPresent(String.self, forKey: .notificationSound) ?? "default"
     }
 }

@@ -54,6 +54,41 @@ final class MeetingEngineTests: XCTestCase {
         XCTAssertEqual(c.next?.id, "live")
     }
 
+    // MARK: Herinneringen los van regels
+
+    func testRemindersAlwaysUpcomingIgnoringRules() {
+        let reminder = makeEvent(id: "reminder:1", title: "Koken", start: now.addingTimeInterval(300), calendarID: "bonk.reminder")
+        let meeting = makeEvent(id: "m1", title: "Koken", start: now.addingTimeInterval(300), calendarID: "work")
+        let rules = [makeRule(alertStyle: .ignore, titleContains: "koken")]   // negeert alles met "koken"
+        let c = MeetingEngine.visibleEvents(calendarEvents: [meeting], reminders: [reminder],
+                                            now: now, rules: rules, dismissed: [], forceShown: [])
+        XCTAssertTrue(c.upcoming.contains { $0.id == "reminder:1" })   // herinnering tóch zichtbaar
+        XCTAssertFalse(c.upcoming.contains { $0.id == "m1" })          // meeting door regel genegeerd
+        XCTAssertFalse(c.skipped.contains { $0.id == "reminder:1" })   // herinnering nooit in "genegeerd"
+    }
+
+    func testReminderRuleMapsGlobalSettings() {
+        var s = AppSettings.default
+        s.reminderAlertStyle = .banner
+        s.reminderLeadMinutes = 0
+        s.reminderSound = "Glass"
+        s.reminderNotifyWhenLocked = true
+        let r = MeetingEngine.reminderRule(from: s)
+        XCTAssertEqual(r.id, MeetingEngine.reminderRuleID)
+        XCTAssertEqual(r.alertStyle, .banner)
+        XCTAssertEqual(r.leadMinutes, 0)
+        XCTAssertEqual(r.notificationSound, "Glass")
+        XCTAssertTrue(r.notifyWhenLocked)
+    }
+
+    func testReminderLeadZeroFiresAtStart() {
+        let reminder = makeEvent(id: "reminder:1", start: now, calendarID: "bonk.reminder")
+        var s = AppSettings.default; s.reminderLeadMinutes = 0
+        let rule = MeetingEngine.reminderRule(from: s)
+        XCTAssertEqual(MeetingEngine.decision(for: reminder, rule: rule, now: now,
+                                              snoozeUntil: nil, alreadyFired: false), .fire)
+    }
+
     // MARK: Vuren & snooze
 
     func testFiresInsideWindow() {
@@ -104,6 +139,34 @@ final class MeetingEngineTests: XCTestCase {
         XCTAssertEqual(MeetingEngine.decision(for: e, rule: rule, now: now,
                                               snoozeUntil: now.addingTimeInterval(-10),
                                               alreadyFired: false), .snoozeEnded(fire: false))
+    }
+
+    // MARK: Exacte wektijd
+
+    func testNextWakeReminderLeadZeroIsStart() {
+        let r = makeEvent(id: "reminder:1", start: now.addingTimeInterval(120), calendarID: "bonk.reminder")
+        var s = AppSettings.default; s.reminderLeadMinutes = 0
+        let wake = MeetingEngine.nextWake(events: [r], now: now, rules: [], dismissed: [], forceShown: [],
+                                          reminderRule: MeetingEngine.reminderRule(from: s), snoozeUntil: [:])
+        XCTAssertEqual(wake, r.start)   // lead 0 → vuurmoment = starttijd
+    }
+
+    func testNextWakePicksSoonestFireTime() {
+        let m = makeEvent(id: "m1", start: now.addingTimeInterval(600))                        // +10 min
+        let r = makeEvent(id: "reminder:1", start: now.addingTimeInterval(900), calendarID: "bonk.reminder")  // +15 min
+        let rule = makeRule(leadMinutes: 5)   // meeting vuurt op +5 min
+        var s = AppSettings.default; s.reminderLeadMinutes = 0
+        let wake = MeetingEngine.nextWake(events: [m, r], now: now, rules: [rule], dismissed: [], forceShown: [],
+                                          reminderRule: MeetingEngine.reminderRule(from: s), snoozeUntil: [:])
+        XCTAssertEqual(wake, now.addingTimeInterval(300))   // +5 min is het vroegst
+    }
+
+    func testNextWakeNilWhenAlreadyInWindow() {
+        let m = makeEvent(id: "m1", start: now.addingTimeInterval(30))   // lead 2min → vuurtijd al gepasseerd
+        let rule = makeRule(leadMinutes: 2)
+        let wake = MeetingEngine.nextWake(events: [m], now: now, rules: [rule], dismissed: [], forceShown: [],
+                                          reminderRule: MeetingEngine.reminderRule(from: .default), snoozeUntil: [:])
+        XCTAssertNil(wake)   // niets te plannen; vuurt al via de normale controle
     }
 
     // MARK: Markering

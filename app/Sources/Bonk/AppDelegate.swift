@@ -17,6 +17,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
     @Published var skipped: [UpcomingEvent] = []
 
     private var timer: Timer?
+    private var wakeTimer: Timer?                    // exacte one-shot timer op het volgende vuurmoment
     private var firedKeys: Set<String> = []
     private var snoozeUntil: [String: Date] = [:]
     private var dismissedIDs: Set<String> = []      // handmatig genegeerd
@@ -156,7 +157,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
 
     private func startTimer() {
         timer?.invalidate()
-        timer = Timer.scheduledTimer(withTimeInterval: 15, repeats: true) { [weak self] _ in
+        // Vangnet-controle. Het precieze afvuren gebeurt via de exacte `wakeTimer`;
+        // nieuwe afspraken komen via `EKEventStoreChanged` binnen. 30s is daarom
+        // ruim genoeg en zuinig (minder wakeups).
+        timer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.tick() }
         }
     }
@@ -188,11 +192,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
             settingsStore.settings.reminders = liveReminders
         }
 
-        let events = (calendar.upcomingEvents(
+        // Agenda-meetings volgen de regels; herinneringen staan los daarvan en
+        // volgen de globale herinnering-instellingen.
+        let calendarEvents = calendar.upcomingEvents(
             within: 48,
             enabledCalendarIDs: settingsStore.settings.enabledCalendarIDs
-        ) + reminderEvents(now: now))
-            .sorted { $0.start < $1.start }
+        )
+        let reminders = reminderEvents(now: now)
+        let events = (calendarEvents + reminders).sorted { $0.start < $1.start }
 
         // Opgeslagen keuzes opschonen zodra meetings uit het venster vallen.
         let ids = Set(events.map { $0.id })
@@ -201,18 +208,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
         forceShownIDs.formIntersection(ids)
         if (dismissedIDs.count, forceShownIDs.count) != before { saveChoices() }
 
-        // Toon de meetings waar een waarschuwende regel op past; genegeerde apart.
-        let classified = MeetingEngine.classify(events: events, now: now,
-                                                 rules: settingsStore.settings.rules,
-                                                 dismissed: dismissedIDs, forceShown: forceShownIDs)
+        // Toon de meetings waar een regel op past + alle herinneringen; genegeerde apart.
+        let classified = MeetingEngine.visibleEvents(calendarEvents: calendarEvents, reminders: reminders,
+                                                      now: now, rules: settingsStore.settings.rules,
+                                                      dismissed: dismissedIDs, forceShown: forceShownIDs)
         upcoming = classified.upcoming
         nextEvent = classified.next
         skipped = classified.skipped
 
         writeDiagnostics(events, now: now)
 
+        let reminderRule = MeetingEngine.reminderRule(from: settingsStore.settings)
         for event in events {
-            guard let rule = warnRule(for: event) else { continue }   // genegeerd / geen regel
+            // Herinneringen volgen de globale herinnering-regel, niet de meeting-regels.
+            let rule: MeetingRule?
+            if MeetingEngine.isReminderID(event.id) {
+                rule = reminderRule.alertStyle == .ignore ? nil : reminderRule
+            } else {
+                rule = warnRule(for: event)
+            }
+            guard let rule else { continue }
             let key = event.id + "|" + rule.id.uuidString
 
             switch MeetingEngine.decision(for: event, rule: rule, now: now,
@@ -234,7 +249,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
 
         if firedKeys.count > 300 { firedKeys.removeAll() }
 
+        scheduleNextWake(events: events, now: now, reminderRule: reminderRule)
         updateChecker.checkIfDue(lang: settingsStore.lang)
+    }
+
+    /// Zet een exacte one-shot timer op het eerstvolgende vuurmoment, zodat een
+    /// waarschuwing vrijwel op de seconde komt i.p.v. pas bij de volgende
+    /// periodieke controle. De periodieke timer blijft als vangnet bestaan.
+    private func scheduleNextWake(events: [UpcomingEvent], now: Date, reminderRule: MeetingRule) {
+        wakeTimer?.invalidate()
+        wakeTimer = nil
+        guard let fireAt = MeetingEngine.nextWake(
+            events: events, now: now, rules: settingsStore.settings.rules,
+            dismissed: dismissedIDs, forceShown: forceShownIDs,
+            reminderRule: reminderRule, snoozeUntil: snoozeUntil
+        ) else { return }
+
+        let interval = max(0.05, fireAt.timeIntervalSinceNow + 0.1)
+        let t = Timer(timeInterval: interval, repeats: false) { [weak self] _ in
+            Task { @MainActor in self?.tick() }
+        }
+        RunLoop.main.add(t, forMode: .common)
+        wakeTimer = t
     }
 
     private func fire(event: UpcomingEvent, rule: MeetingRule) {
@@ -245,9 +281,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
         case .banner:
             BannerNotifier.show(event: event, lang: settingsStore.lang)
         case .fullScreen:
+            // Bij een vergrendeld scherm zie je het overlay toch niet → optioneel
+            // een notificatie zodat je het tóch ziet. Het overlay blijft staan en
+            // is na het ontgrendelen alsnog zichtbaar.
+            if rule.notifyWhenLocked, AlertSound.screenIsLocked {
+                BannerNotifier.show(event: event, lang: settingsStore.lang)
+            }
             present(event: event, rule: rule)
         case .ignore:
             break
+        }
+        // Geluid hoort bij élke waarschuwing (notificatie én schermvullend), en
+        // werkt ook bij een vergrendeld scherm.
+        if rule.alertStyle != .ignore {
+            AlertSound.play(rule.notificationSound)
         }
     }
 
@@ -277,7 +324,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
                 backdrops: backs,
                 onJoin: { if let u = event.joinURL { NSWorkspace.shared.open(u) } },
                 onSnooze: { [weak self] mins in self?.snooze(event: event, minutes: mins) },
-                onDismiss: { [weak self] in self?.dismissEvent(event) }
+                // Herinnering: "Sluiten" sluit alleen het overlay (de herinnering blijft
+                // staan en wordt niet genegeerd/verwijderd). Meeting: "Negeren".
+                onDismiss: { [weak self] in
+                    if !MeetingEngine.isReminderID(event.id) { self?.dismissEvent(event) }
+                }
             )
         }
     }

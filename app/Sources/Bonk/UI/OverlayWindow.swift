@@ -159,7 +159,10 @@ final class OverlayController {
     }
 
     private func render() {
-        let background = meetings.first?.appearance ?? .default
+        // Valt een herinnering samen met een meeting, dan heeft de layout van de
+        // meeting voorrang; de herinnering wordt als kaart binnen dat overlay getoond.
+        let background = meetings.first(where: { !$0.id.hasPrefix("reminder:") })?.appearance
+            ?? meetings.first?.appearance ?? .default
         for (index, screen) in screens.enumerated() {
             guard windows.indices.contains(index) else { continue }
             let backdrop = screen.bonkDisplayID.flatMap { backdrops[$0] }

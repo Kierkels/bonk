@@ -283,11 +283,14 @@ struct MeetingCardView: View {
             .fixedSize()
 
             Button(action: meeting.onDismiss) {
-                actionLabel(L("Negeren", "Ignore", lang), icon: "xmark", fill: .white.opacity(0.10))
+                actionLabel(isReminder ? L("Sluiten", "Close", lang) : L("Negeren", "Ignore", lang),
+                            icon: "xmark", fill: .white.opacity(0.10))
             }
             .buttonStyle(.plain)
         }
     }
+
+    private var isReminder: Bool { event.id.hasPrefix("reminder:") }
 
     private func actionLabel(_ title: String, icon: String, fill: some ShapeStyle) -> some View {
         ZStack {
