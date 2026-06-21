@@ -28,15 +28,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
     /// Wordt deze meeting genegeerd? Volgorde-gebaseerd: handmatig negeren of de
     /// eerste passende regel is een negeer-regel — tenzij expliciet weer geactiveerd.
     private func isIgnored(_ event: UpcomingEvent) -> Bool {
-        if forceShownIDs.contains(event.id) { return false }
-        if dismissedIDs.contains(event.id) { return true }
-        return settingsStore.rule(for: event)?.alertStyle == .ignore
+        MeetingEngine.isIgnored(event, rules: settingsStore.settings.rules,
+                                dismissed: dismissedIDs, forceShown: forceShownIDs)
     }
 
     /// De regel die bepaalt hoe gewaarschuwd wordt (nil = niet waarschuwen).
     private func warnRule(for event: UpcomingEvent) -> MeetingRule? {
-        guard !isIgnored(event) else { return nil }
-        return settingsStore.firstAlertRule(for: event)
+        MeetingEngine.warnRule(for: event, rules: settingsStore.settings.rules,
+                               dismissed: dismissedIDs, forceShown: forceShownIDs)
     }
 
     /// Tekst voor in de menubalk, afhankelijk van de gekozen stijl.
@@ -68,20 +67,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
     ///   uit verschillende agenda's zijn.
     /// - Eigen modus: de zelfgekozen kleur.
     var menuBarHighlightColor: Color? {
-        let s = settingsStore.settings
-        guard s.globalEnabled, s.menuBarHighlightEnabled, let n = nextEvent else { return nil }
-        if s.menuBarOnlyToday, !Calendar.current.isDateInToday(n.start) { return nil }
-        let minutesUntil = n.start.timeIntervalSinceNow / 60
-        guard minutesUntil <= Double(s.menuBarHighlightMinutes) else { return nil }
-
-        if s.menuBarHighlightColorMode == "custom" {
-            return Color(hex: s.menuBarHighlightColorHex)
+        switch MeetingEngine.highlightChoice(next: nextEvent, upcoming: upcoming,
+                                             now: Date(), settings: settingsStore.settings) {
+        case .none:               return nil
+        case .custom:             return Color(hex: settingsStore.settings.menuBarHighlightColorHex)
+        case .white:              return .white
+        case .calendar(let id):   return calendarColor(id)
         }
-        // Agenda-modus: meerdere tegelijk uit verschillende agenda's → wit.
-        let simultaneous = upcoming.filter { abs($0.start.timeIntervalSince(n.start)) < 60 }
-        let calendarIDs = Set(simultaneous.map { $0.calendarID })
-        if calendarIDs.count > 1 { return .white }
-        return calendarColor(n.calendarID)
     }
 
     /// Kleur van een agenda (eventuele eigen kleur uit instellingen, anders die van
@@ -137,7 +129,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
             observeCalendarChanges()
             observeSettings()
             tick()
-            await updateChecker.check(lang: settingsStore.lang)
+            updateChecker.checkIfDue(lang: settingsStore.lang)
         }
     }
 
@@ -210,23 +202,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
         if (dismissedIDs.count, forceShownIDs.count) != before { saveChoices() }
 
         // Toon de meetings waar een waarschuwende regel op past; genegeerde apart.
-        upcoming = events.filter { $0.end > now && warnRule(for: $0) != nil }
-        nextEvent = upcoming.first
-        skipped = events.filter { $0.end > now && isIgnored($0) }
+        let classified = MeetingEngine.classify(events: events, now: now,
+                                                 rules: settingsStore.settings.rules,
+                                                 dismissed: dismissedIDs, forceShown: forceShownIDs)
+        upcoming = classified.upcoming
+        nextEvent = classified.next
+        skipped = classified.skipped
 
         writeDiagnostics(events, now: now)
 
         for event in events {
             guard let rule = warnRule(for: event) else { continue }   // genegeerd / geen regel
-            if let snz = snoozeUntil[event.id], now < snz { continue }
-
             let key = event.id + "|" + rule.id.uuidString
-            let fireTime = event.start.addingTimeInterval(-Double(rule.leadMinutes) * 60)
-            let grace = event.start.addingTimeInterval(120)
 
-            if now >= fireTime, now <= grace, !firedKeys.contains(key) {
+            switch MeetingEngine.decision(for: event, rule: rule, now: now,
+                                          snoozeUntil: snoozeUntil[event.id],
+                                          alreadyFired: firedKeys.contains(key)) {
+            case .none, .stillSnoozed:
+                continue
+            case .fire:
                 firedKeys.insert(key)
                 fire(event: event, rule: rule)
+            case .snoozeEnded(let shouldFire):
+                snoozeUntil[event.id] = nil
+                if shouldFire {
+                    firedKeys.insert(key)
+                    fire(event: event, rule: rule)
+                }
             }
         }
 
@@ -346,9 +348,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
 
     private func dismissEvent(id: String) {
         // Custom herinneringen worden bij negeren verwijderd, niet genegeerd.
-        if id.hasPrefix("reminder:") {
-            let uuidString = String(id.dropFirst("reminder:".count))
-            if let uuid = UUID(uuidString: uuidString) {
+        if MeetingEngine.isReminderID(id) {
+            if let uuid = MeetingEngine.reminderUUID(fromEventID: id) {
                 settingsStore.removeReminder(id: uuid)
             }
             tick()

@@ -36,6 +36,9 @@ jobs:
       - name: Toolchain info
         run: swift --version
 
+      - name: Run tests
+        run: swift test --package-path app   # rode tests blokkeren de release
+
       - name: Build Bonk.app
         run: ./app/build.sh          # CI=true → assembles the bundle, no install/launch
 

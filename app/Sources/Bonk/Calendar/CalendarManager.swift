@@ -27,7 +27,10 @@ final class CalendarManager: ObservableObject {
         let end = Calendar.current.date(byAdding: .hour, value: hours, to: now) ?? now
 
         // Leeg = geen agenda's volgen.
-        let cals = store.calendars(for: .event).filter { enabledCalendarIDs.contains($0.calendarIdentifier) }
+        let all = store.calendars(for: .event)
+        let selected = Set(MeetingEngine.selectedCalendarIDs(available: all.map { $0.calendarIdentifier },
+                                                             enabled: enabledCalendarIDs))
+        let cals = all.filter { selected.contains($0.calendarIdentifier) }
         guard !cals.isEmpty else { return [] }
 
         let predicate = store.predicateForEvents(withStart: now, end: end, calendars: cals)
@@ -63,7 +66,7 @@ final class CalendarManager: ObservableObject {
 
     /// Strip de automatisch toegevoegde conferencing-boilerplate (Google/Teams)
     /// en HTML, zodat alleen de door de organisator getypte omschrijving overblijft.
-    static func cleanNotes(_ raw: String?) -> String? {
+    nonisolated static func cleanNotes(_ raw: String?) -> String? {
         guard var text = raw else { return nil }
 
         // Google scheidt de eigen omschrijving van de boilerplate met een lange

@@ -1,0 +1,26 @@
+# Draait de unit-tests (swift test) op elke push/PR die de app raakt, zodat een
+# regressie meteen zichtbaar is — los van het uitbrengen van een release.
+name: Tests
+
+on:
+  push:
+    paths:
+      - 'app/**'
+  pull_request:
+    paths:
+      - 'app/**'
+  workflow_dispatch:
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain info
+        run: swift --version
+      - name: Run tests
+        run: swift test --package-path app

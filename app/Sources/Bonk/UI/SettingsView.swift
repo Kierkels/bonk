@@ -19,11 +19,12 @@ struct SettingsView: View {
     private var lang: Lang { store.lang }
 
     enum Tab: String, CaseIterable, Identifiable {
-        case general, rules, reminders, appearance, calendars
+        case general, menubar, rules, reminders, appearance, calendars
         var id: String { rawValue }
         func title(_ lang: Lang) -> String {
             switch self {
             case .general:    return L("Algemeen", "General", lang)
+            case .menubar:    return L("Menubalk", "Menu bar", lang)
             case .rules:      return L("Regels", "Rules", lang)
             case .reminders:  return L("Herinneringen", "Reminders", lang)
             case .appearance: return L("Weergave", "Appearance", lang)
@@ -33,6 +34,7 @@ struct SettingsView: View {
         var icon: String {
             switch self {
             case .general:    return "gearshape"
+            case .menubar:    return "menubar.rectangle"
             case .rules:      return "slider.horizontal.3"
             case .reminders:  return "alarm"
             case .appearance: return "paintbrush"
@@ -83,6 +85,7 @@ struct SettingsView: View {
             Form {
                 switch selection ?? .general {
                 case .general:   generalTab
+                case .menubar:   menuBarTab
                 case .calendars: calendarsTab
                 default:         EmptyView()
                 }
@@ -108,40 +111,11 @@ struct SettingsView: View {
         }
         .listRowBackground(Color.clear)
 
-        Section(L("Status", "Status", lang)) {
+        Section {
             Toggle(L("Bonk ingeschakeld", "Bonk enabled", lang), isOn: $store.settings.globalEnabled)
-            LabeledContent(L("Agendatoegang", "Calendar access", lang)) {
-                if calendar.authorized {
-                    Label(L("Verleend", "Granted", lang), systemImage: "checkmark.circle.fill").foregroundStyle(.green)
-                } else {
-                    Button(L("Toegang vragen", "Request access", lang)) { Task { await calendar.requestAccess() } }
-                }
-            }
-        }
-
-        Section(L("Updates", "Updates", lang)) {
-            LabeledContent(L("Status", "Status", lang)) {
-                if updates.isChecking {
-                    Text(L("Controleren…", "Checking…", lang)).foregroundStyle(.secondary)
-                } else if let version = updates.availableVersion, let url = updates.releaseURL {
-                    Button {
-                        NSWorkspace.shared.open(url)
-                    } label: {
-                        Label(L("Versie \(version) downloaden", "Download version \(version)", lang),
-                              systemImage: "arrow.down.circle.fill")
-                    }
-                } else if updates.lastCheckFailed {
-                    Label(L("Controle mislukt", "Check failed", lang), systemImage: "exclamationmark.triangle")
-                        .foregroundStyle(.secondary)
-                } else {
-                    Label(L("Je gebruikt de nieuwste versie", "You're on the latest version", lang),
-                          systemImage: "checkmark.circle.fill").foregroundStyle(.green)
-                }
-            }
-            Button(L("Nu controleren op updates", "Check for updates now", lang)) {
-                Task { await updates.check(notify: false, lang: lang) }
-            }
-            .disabled(updates.isChecking)
+        } footer: {
+            Text(L("Wanneer uit, waarschuwt Bonk nergens voor.",
+                   "When off, Bonk won't alert you about anything.", lang))
         }
 
         Section {
@@ -159,13 +133,56 @@ struct SettingsView: View {
             Text(L("Taal & weergave", "Language & appearance", lang))
         }
 
+        Section(L("Opstarten", "Startup", lang)) {
+            Toggle(L("Starten bij inloggen", "Launch at login", lang), isOn: $launchAtLogin)
+                .onChange(of: launchAtLogin) { _, newValue in setLaunchAtLogin(newValue) }
+        }
+
+        Section {
+            LabeledContent(L("Versie", "Version", lang)) {
+                if updates.isChecking {
+                    Text(L("Controleren…", "Checking…", lang)).foregroundStyle(.secondary)
+                } else if let version = updates.availableVersion, let url = updates.releaseURL {
+                    Button {
+                        NSWorkspace.shared.open(url)
+                    } label: {
+                        Label(L("Versie \(version) downloaden", "Download version \(version)", lang),
+                              systemImage: "arrow.down.circle.fill")
+                    }
+                } else if updates.rateLimited {
+                    Label(L("Te vaak gecontroleerd — probeer het later", "Checked too often — try again later", lang),
+                          systemImage: "clock.badge.exclamationmark")
+                        .foregroundStyle(.secondary)
+                } else if updates.lastCheckFailed {
+                    Label(L("Controle mislukt", "Check failed", lang), systemImage: "exclamationmark.triangle")
+                        .foregroundStyle(.secondary)
+                } else {
+                    Label(L("Je gebruikt de nieuwste versie", "You're on the latest version", lang),
+                          systemImage: "checkmark.circle.fill").foregroundStyle(.green)
+                }
+            }
+            Button(L("Nu controleren op updates", "Check for updates now", lang)) {
+                Task { await updates.check(notify: false, lang: lang) }
+            }
+            .disabled(updates.isChecking)
+        } header: {
+            Text(L("Updates", "Updates", lang))
+        } footer: {
+            Text(L("Bonk controleert automatisch op nieuwe versies en waarschuwt je als er één is.",
+                   "Bonk checks for new versions automatically and lets you know when one is available.", lang))
+        }
+    }
+
+    // MARK: Menubalk
+
+    @ViewBuilder private var menuBarTab: some View {
         Section {
             Picker(L("Menubalk toont", "Menu bar shows", lang), selection: $store.settings.menuBarStyle) {
                 ForEach(MenuBarStyle.allCases) { Text($0.label(lang)).tag($0) }
             }
             Toggle(L("Alleen voor meetings van vandaag", "Only for today's meetings", lang), isOn: $store.settings.menuBarOnlyToday)
         } header: {
-            Text(L("Menubalk", "Menu bar", lang))
+            Text(L("Weergave", "Display", lang))
         } footer: {
             Text(L("Wat er naast het icoon verschijnt voor de eerstvolgende meeting. Met ‘alleen vandaag’ toont de menubalk niets als de meeting niet vandaag is.",
                    "What appears next to the icon for the next meeting. With ‘only today’ the menu bar shows nothing if the meeting isn't today.", lang))
@@ -192,15 +209,10 @@ struct SettingsView: View {
                 }
             }
         } header: {
-            Text(L("Menubalk-markering", "Menu bar highlight", lang))
+            Text(L("Markering", "Highlight", lang))
         } footer: {
             Text(L("Kleurt de achtergrond achter het menubalk-icoon zodra de eerstvolgende meeting binnen de ingestelde tijd valt. Bij ‘agenda-kleur’ wordt de achtergrond wit als er meerdere meetings tegelijk uit verschillende agenda’s zijn.",
                    "Colours the background behind the menu bar icon once the next meeting is within the set time. With ‘calendar colour’ the background turns white when several meetings start at once from different calendars.", lang))
-        }
-
-        Section(L("Opstarten", "Startup", lang)) {
-            Toggle(L("Starten bij inloggen", "Launch at login", lang), isOn: $launchAtLogin)
-                .onChange(of: launchAtLogin) { _, newValue in setLaunchAtLogin(newValue) }
         }
     }
 
@@ -401,10 +413,20 @@ struct SettingsView: View {
     // MARK: Agenda's
 
     @ViewBuilder private var calendarsTab: some View {
+        Section(L("Toegang", "Access", lang)) {
+            LabeledContent(L("Agendatoegang", "Calendar access", lang)) {
+                if calendar.authorized {
+                    Label(L("Verleend", "Granted", lang), systemImage: "checkmark.circle.fill").foregroundStyle(.green)
+                } else {
+                    Button(L("Toegang vragen", "Request access", lang)) { Task { await calendar.requestAccess() } }
+                }
+            }
+        }
+
         Section {
             if calendar.calendars.isEmpty {
-                Text(L("Geen agendatoegang. Geef toegang via het Algemeen-tabblad.",
-                       "No calendar access. Grant it on the General tab.", lang))
+                Text(L("Nog geen agendatoegang. Vraag toegang aan via de knop hierboven.",
+                       "No calendar access yet. Request it with the button above.", lang))
                     .foregroundStyle(.secondary)
             }
             ForEach(calendar.calendars, id: \.calendarIdentifier) { cal in

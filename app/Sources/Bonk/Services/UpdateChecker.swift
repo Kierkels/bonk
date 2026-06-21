@@ -12,10 +12,18 @@ final class UpdateChecker: ObservableObject {
     @Published private(set) var releaseURL: URL?
     @Published private(set) var isChecking = false
     @Published private(set) var lastCheckFailed = false
+    @Published private(set) var rateLimited = false
 
     private let repo = "Kierkels/bonk"
     private let notifiedKey = "BonkUpdateNotifiedVersion.v1"   // al via notificatie gemeld
-    private var lastCheck: Date?
+    private let lastCheckKey = "BonkUpdateLastCheck.v1"        // throttle over herstarts heen
+
+    /// Laatste keer dat de server antwoordde (bewaard, zodat we niet bij elke
+    /// herstart opnieuw checken en tegen de GitHub rate-limit aanlopen).
+    private var lastCheck: Date? {
+        let t = UserDefaults.standard.double(forKey: lastCheckKey)
+        return t > 0 ? Date(timeIntervalSince1970: t) : nil
+    }
 
     /// Huidige versie uit de bundle (CFBundleShortVersionString), bv. "1.0".
     var currentVersion: String {
@@ -43,7 +51,7 @@ final class UpdateChecker: ObservableObject {
     func check(notify: Bool = true, lang: Lang) async {
         isChecking = true
         lastCheckFailed = false
-        lastCheck = Date()
+        rateLimited = false
         defer { isChecking = false }
 
         guard let url = URL(string: "https://api.github.com/repos/\(repo)/releases/latest") else { return }
@@ -53,10 +61,21 @@ final class UpdateChecker: ObservableObject {
 
         do {
             let (data, resp) = try await URLSession.shared.data(for: req)
-            guard let http = resp as? HTTPURLResponse, http.statusCode == 200 else {
-                lastCheckFailed = true
+            guard let http = resp as? HTTPURLResponse else { lastCheckFailed = true; return }
+            // Server heeft geantwoord → throttle bijwerken (ook bij rate-limit),
+            // zodat we niet blijven hameren.
+            UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: lastCheckKey)
+
+            if http.statusCode == 403 || http.statusCode == 429 {
+                if http.statusCode == 429 || http.value(forHTTPHeaderField: "X-RateLimit-Remaining") == "0" {
+                    rateLimited = true
+                } else {
+                    lastCheckFailed = true
+                }
                 return
             }
+            guard http.statusCode == 200 else { lastCheckFailed = true; return }
+
             let release = try JSONDecoder().decode(Release.self, from: data)
             guard !release.draft, !release.prerelease else { return }
 
@@ -82,7 +101,7 @@ final class UpdateChecker: ObservableObject {
     }
 
     /// Vergelijkt versies als puntgescheiden getallenreeksen ("1.2" > "1.1.9").
-    static func isNewer(_ a: String, than b: String) -> Bool {
+    nonisolated static func isNewer(_ a: String, than b: String) -> Bool {
         func parts(_ s: String) -> [Int] { s.split(separator: ".").map { Int($0) ?? 0 } }
         let pa = parts(a), pb = parts(b)
         for i in 0 ..< max(pa.count, pb.count) {
