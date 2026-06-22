@@ -21,11 +21,24 @@ final class MeetingRuleTests: XCTestCase {
         XCTAssertFalse(makeRule(titleContains: "standup").matches(e))
     }
 
-    func testOnlyAcceptedFiltersUnaccepted() {
-        let accepted = makeEvent(start: start, isAccepted: true)
-        let declined = makeEvent(start: start, isAccepted: false)
-        XCTAssertTrue(makeRule(onlyAccepted: true).matches(accepted))
-        XCTAssertFalse(makeRule(onlyAccepted: true).matches(declined))
+    func testAttendanceFilter() {
+        let accepted = makeEvent(start: start, attendance: .accepted)
+        let invited = makeEvent(start: start, attendance: .invited)
+        let info = makeEvent(start: start, attendance: .informational)
+
+        // Filter op {accepted}: alleen geaccepteerd matcht.
+        XCTAssertTrue(makeRule(attendanceFilter: [.accepted]).matches(accepted))
+        XCTAssertFalse(makeRule(attendanceFilter: [.accepted]).matches(invited))
+        XCTAssertFalse(makeRule(attendanceFilter: [.accepted]).matches(info))
+
+        // Filter op {accepted, invited}: beide matchen, info niet.
+        let rule = makeRule(attendanceFilter: [.accepted, .invited])
+        XCTAssertTrue(rule.matches(accepted))
+        XCTAssertTrue(rule.matches(invited))
+        XCTAssertFalse(rule.matches(info))
+
+        // Lege filter = alle statussen.
+        XCTAssertTrue(makeRule(attendanceFilter: []).matches(info))
     }
 
     func testCalendarIDScoping() {

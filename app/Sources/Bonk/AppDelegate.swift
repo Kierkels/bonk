@@ -389,7 +389,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
                 end: reminder.date,
                 calendarTitle: "Herinnering",
                 calendarID: "bonk.reminder",
-                isAccepted: false, // niet relevant voor herinneringen (geen "Geaccepteerd"-badge)
+                attendance: .none, // herinneringen hebben geen RSVP → geen badge
                 joinURL: nil,
                 location: nil,
                 notes: reminder.notes.isEmpty ? nil : reminder.notes,
@@ -411,7 +411,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
             "menuBarText: \(menuBarText ?? "nil")",
         ]
         for e in events.prefix(12) {
-            lines.append(" - \(e.start) | \(e.title) | cal=\(e.calendarTitle) | accepted=\(e.isAccepted)")
+            lines.append(" - \(e.start) | \(e.title) | cal=\(e.calendarTitle) | rsvp=\(e.attendance.rawValue)")
         }
         try? lines.joined(separator: "\n").write(toFile: "/tmp/bonk-events.log", atomically: true, encoding: .utf8)
     }

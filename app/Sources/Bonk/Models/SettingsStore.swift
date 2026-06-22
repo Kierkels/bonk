@@ -56,7 +56,6 @@ struct AppSettings: Codable {
                 name: "Alle meetings",
                 isEnabled: true,
                 titleContains: "",
-                onlyAccepted: false,
                 daysOfWeek: [],
                 leadMinutes: 1,
                 alertStyle: .fullScreen,

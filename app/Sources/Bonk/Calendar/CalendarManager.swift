@@ -64,7 +64,7 @@ final class CalendarManager: ObservableObject {
                     end: ev.endDate ?? start,
                     calendarTitle: ev.calendar?.title ?? "",
                     calendarID: ev.calendar?.calendarIdentifier ?? "",
-                    isAccepted: Self.isAccepted(ev),
+                    attendance: Self.attendance(ev),
                     joinURL: url,
                     location: ev.location,
                     notes: Self.cleanNotes(ev.notes),
@@ -103,15 +103,24 @@ final class CalendarManager: ObservableObject {
         return collapsed.isEmpty ? nil : collapsed
     }
 
-    /// Beschouw afspraken zonder deelnemers (eigen events) als geaccepteerd.
-    static func isAccepted(_ ev: EKEvent) -> Bool {
-        guard let attendees = ev.attendees, !attendees.isEmpty else { return true }
-        if let me = attendees.first(where: { $0.isCurrentUser }) {
-            switch me.participantStatus {
-            case .accepted, .tentative: return true
-            default: return false
-            }
+    /// Bepaalt de RSVP-status van de huidige gebruiker. Events zónder persoonlijke
+    /// uitnodiging (geen deelnemers, of jij staat niet in de lijst — zoals gedeelde/
+    /// jaarkalender-items) zijn `.informational`, niet "geaccepteerd".
+    static func attendance(_ ev: EKEvent) -> Attendance {
+        // Bij een gedeelde agenda injecteert EventKit de agenda zélf als
+        // `isCurrentUser`-deelnemer (status accepted) — dat is géén persoonlijke
+        // RSVP. Negeer die proxy (naam == agenda-titel) en zoek een échte
+        // jij-deelnemer; anders → informational.
+        let calendarTitle = ev.calendar?.title
+        guard let me = (ev.attendees ?? []).first(where: {
+            $0.isCurrentUser && $0.name != calendarTitle
+        }) else {
+            return .informational
         }
-        return true
+        switch me.participantStatus {
+        case .accepted, .tentative: return .accepted
+        case .declined:             return .declined
+        default:                    return .invited   // pending / unknown / needs-action
+        }
     }
 }

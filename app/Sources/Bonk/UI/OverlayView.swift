@@ -233,7 +233,7 @@ struct MeetingCardView: View {
     private var showMeta: Bool {
         appearance.showTime
             || (appearance.showCalendar && !event.calendarTitle.isEmpty)
-            || (appearance.showAccepted && event.isAccepted)
+            || (appearance.showAccepted && event.attendance.showsBadge)
     }
 
     private var metaRow: some View {
@@ -244,8 +244,8 @@ struct MeetingCardView: View {
             if appearance.showCalendar && !event.calendarTitle.isEmpty {
                 label(icon: "calendar", text: event.calendarTitle)
             }
-            if appearance.showAccepted && event.isAccepted {
-                label(icon: "checkmark.circle.fill", text: L("Geaccepteerd", "Accepted", lang))
+            if appearance.showAccepted && event.attendance.showsBadge {
+                label(icon: event.attendance.icon, text: event.attendance.label(lang))
             }
         }
         .font(.system(size: large ? 16 : 12, weight: .medium, design: .rounded))

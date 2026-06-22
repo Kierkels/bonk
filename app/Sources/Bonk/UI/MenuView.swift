@@ -218,14 +218,14 @@ struct MenuView: View {
             if let room = roomText(event) {
                 metaLine(icon: "mappin.and.ellipse", text: room)
             }
-            // Agenda + status
-            if !event.calendarTitle.isEmpty || event.isAccepted {
+            // Agenda + RSVP-status
+            if !event.calendarTitle.isEmpty || event.attendance.showsBadge {
                 HStack(spacing: 10) {
                     if !event.calendarTitle.isEmpty {
                         metaLine(icon: "calendar", text: event.calendarTitle)
                     }
-                    if event.isAccepted {
-                        metaLine(icon: "checkmark.circle.fill", text: L("Geaccepteerd", "Accepted", lang))
+                    if event.attendance.showsBadge {
+                        metaLine(icon: event.attendance.icon, text: event.attendance.label(lang))
                     }
                 }
             }

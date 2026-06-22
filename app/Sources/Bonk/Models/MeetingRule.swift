@@ -7,7 +7,7 @@ struct MeetingRule: Codable, Identifiable, Equatable {
     var name: String = "Nieuwe regel"
     var isEnabled: Bool = true
     var titleContains: String = ""        // leeg = elke titel
-    var onlyAccepted: Bool = false        // alleen meetings die ik heb geaccepteerd
+    var attendanceFilter: Set<Attendance> = []  // leeg = alle; anders alleen deze RSVP-statussen
     var daysOfWeek: Set<Int> = []         // 1=zo ... 7=za ; leeg = alle dagen
     var leadMinutes: Int = 1              // hoeveel minuten van tevoren
     var alertStyle: AlertStyle = .fullScreen
@@ -27,7 +27,7 @@ struct MeetingRule: Codable, Identifiable, Equatable {
         if !needle.isEmpty, !event.title.localizedCaseInsensitiveContains(needle) {
             return false
         }
-        if onlyAccepted, !event.isAccepted { return false }
+        if !attendanceFilter.isEmpty, !attendanceFilter.contains(event.attendance) { return false }
         if !daysOfWeek.isEmpty, !daysOfWeek.contains(event.weekday) { return false }
         return true
     }
@@ -42,7 +42,15 @@ extension MeetingRule {
         name = try c.decodeIfPresent(String.self, forKey: .name) ?? "Nieuwe regel"
         isEnabled = try c.decodeIfPresent(Bool.self, forKey: .isEnabled) ?? true
         titleContains = try c.decodeIfPresent(String.self, forKey: .titleContains) ?? ""
-        onlyAccepted = try c.decodeIfPresent(Bool.self, forKey: .onlyAccepted) ?? false
+        // Migratie: oude `onlyAccepted: true` → filter op {accepted}.
+        if let set = try c.decodeIfPresent(Set<Attendance>.self, forKey: .attendanceFilter) {
+            attendanceFilter = set
+        } else if let legacy = try? decoder.container(keyedBy: LegacyKeys.self),
+                  let only = ((try? legacy.decodeIfPresent(Bool.self, forKey: .onlyAccepted)) ?? nil), only {
+            attendanceFilter = [.accepted]
+        } else {
+            attendanceFilter = []
+        }
         daysOfWeek = try c.decodeIfPresent(Set<Int>.self, forKey: .daysOfWeek) ?? []
         leadMinutes = try c.decodeIfPresent(Int.self, forKey: .leadMinutes) ?? 1
         alertStyle = try c.decodeIfPresent(AlertStyle.self, forKey: .alertStyle) ?? .fullScreen
@@ -64,5 +72,5 @@ extension MeetingRule {
         overrideMute = try c.decodeIfPresent(Bool.self, forKey: .overrideMute) ?? false
     }
 
-    private enum LegacyKeys: String, CodingKey { case calendarID }
+    private enum LegacyKeys: String, CodingKey { case calendarID, onlyAccepted }
 }

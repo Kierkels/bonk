@@ -377,7 +377,12 @@ struct SettingsView: View {
         }
         let title = rule.titleContains.trimmingCharacters(in: .whitespaces)
         parts.append(title.isEmpty ? L("Alle titels", "All titles", lang) : L("Titel: “\(title)”", "Title: “\(title)”", lang))
-        if rule.onlyAccepted { parts.append(L("Geaccepteerd", "Accepted", lang)) }
+        if !rule.attendanceFilter.isEmpty {
+            parts.append(Attendance.filterChoices
+                .filter { rule.attendanceFilter.contains($0) }
+                .map { $0.label(lang) }
+                .joined(separator: "/"))
+        }
         if !rule.daysOfWeek.isEmpty {
             parts.append(Self.weekdayOrder.filter { rule.daysOfWeek.contains($0) }
                 .map { Self.weekdayLabel($0, lang) }.joined(separator: " "))
@@ -770,7 +775,7 @@ private struct AppearanceEditorView: View {
                     Toggle(L("Aftelklok", "Countdown", lang), isOn: $draft.showCountdown)
                     Toggle(L("Tijd", "Time", lang), isOn: $draft.showTime)
                     Toggle(L("Agenda", "Calendar", lang), isOn: $draft.showCalendar)
-                    Toggle(L("Geaccepteerd-status", "Accepted status", lang), isOn: $draft.showAccepted)
+                    Toggle(L("RSVP-status", "RSVP status", lang), isOn: $draft.showAccepted)
                     Toggle(L("Ruimte / locatie", "Room / location", lang), isOn: $draft.showLocation)
                     Toggle(L("Beschrijving", "Description", lang), isOn: $draft.showDescription)
                 } header: {
@@ -976,7 +981,22 @@ private struct RuleEditorView: View {
                         TextField(L("(elke titel)", "(any title)", lang), text: $draft.titleContains)
                             .labelsHidden().textFieldStyle(.roundedBorder)
                     }
-                    Toggle(L("Alleen geaccepteerde meetings", "Only accepted meetings", lang), isOn: $draft.onlyAccepted)
+                    field(L("Status (geen = alle)", "Status (none = all)", lang)) {
+                        VStack(alignment: .leading, spacing: 7) {
+                            ForEach(Attendance.filterChoices, id: \.self) { status in
+                                Toggle(isOn: Binding(
+                                    get: { draft.attendanceFilter.contains(status) },
+                                    set: { on in
+                                        if on { draft.attendanceFilter.insert(status) }
+                                        else { draft.attendanceFilter.remove(status) }
+                                    }
+                                )) {
+                                    Label(status.label(lang), systemImage: status.icon)
+                                }
+                                .toggleStyle(.checkbox)
+                            }
+                        }
+                    }
                     field(L("Op deze dagen (leeg = elke dag)", "On these days (empty = every day)", lang)) {
                         HStack(spacing: 4) {
                             ForEach(SettingsView.weekdayOrder, id: \.self) { weekday in

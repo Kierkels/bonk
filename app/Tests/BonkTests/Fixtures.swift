@@ -8,7 +8,7 @@ func makeEvent(
     start: Date,
     durationMin: Double = 30,
     calendarID: String = "cal-A",
-    isAccepted: Bool = true,
+    attendance: Attendance = .accepted,
     weekday: Int? = nil
 ) -> UpcomingEvent {
     UpcomingEvent(
@@ -18,7 +18,7 @@ func makeEvent(
         end: start.addingTimeInterval(durationMin * 60),
         calendarTitle: calendarID,
         calendarID: calendarID,
-        isAccepted: isAccepted,
+        attendance: attendance,
         joinURL: nil,
         location: nil,
         notes: nil,
@@ -31,7 +31,7 @@ func makeRule(
     name: String = "Alle",
     alertStyle: AlertStyle = .fullScreen,
     titleContains: String = "",
-    onlyAccepted: Bool = false,
+    attendanceFilter: Set<Attendance> = [],
     daysOfWeek: Set<Int> = [],
     leadMinutes: Int = 2,
     calendarID: String? = nil,
@@ -41,7 +41,7 @@ func makeRule(
     r.name = name
     r.alertStyle = alertStyle
     r.titleContains = titleContains
-    r.onlyAccepted = onlyAccepted
+    r.attendanceFilter = attendanceFilter
     r.daysOfWeek = daysOfWeek
     r.leadMinutes = leadMinutes
     r.calendarIDs = calendarID.map { [$0] } ?? []
