@@ -34,6 +34,17 @@ final class MeetingRuleTests: XCTestCase {
         XCTAssertFalse(makeRule(calendarID: "home").matches(e))
     }
 
+    func testMultipleCalendarsScoping() {
+        var rule = makeRule()
+        rule.calendarIDs = ["work", "home"]
+        XCTAssertTrue(rule.matches(makeEvent(start: start, calendarID: "work")))
+        XCTAssertTrue(rule.matches(makeEvent(start: start, calendarID: "home")))
+        XCTAssertFalse(rule.matches(makeEvent(start: start, calendarID: "other")))
+        // Lege set = alle agenda's.
+        rule.calendarIDs = []
+        XCTAssertTrue(rule.matches(makeEvent(start: start, calendarID: "anything")))
+    }
+
     func testCalendarScopedRuleDoesNotMatchReminder() {
         // Herinneringen hebben calendarID "bonk.reminder" → een agenda-gebonden
         // regel mag er niet op passen.

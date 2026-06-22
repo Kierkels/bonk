@@ -63,7 +63,10 @@ struct SettingsView: View {
                 .navigationTitle((selection ?? .general).title(lang))
         }
         .frame(width: 720, height: 600)
-        .onAppear { launchAtLogin = (SMAppService.mainApp.status == .enabled) }
+        .onAppear {
+            launchAtLogin = (SMAppService.mainApp.status == .enabled)
+            calendar.reloadCalendars()   // toon altijd de actuele agendalijst
+        }
         .sheet(item: $editingRule) { rule in
             RuleEditorView(store: store, calendar: calendar, rule: rule)
         }
@@ -365,7 +368,11 @@ struct SettingsView: View {
 
     private func ruleSummary(_ rule: MeetingRule) -> String {
         var parts: [String] = []
-        if let calID = rule.calendarID { parts.append(calendarName(calID)) }
+        if rule.calendarIDs.count == 1, let calID = rule.calendarIDs.first {
+            parts.append(calendarName(calID))
+        } else if rule.calendarIDs.count > 1 {
+            parts.append(L("\(rule.calendarIDs.count) agenda's", "\(rule.calendarIDs.count) calendars", lang))
+        }
         let title = rule.titleContains.trimmingCharacters(in: .whitespaces)
         parts.append(title.isEmpty ? L("Alle titels", "All titles", lang) : L("Titel: “\(title)”", "Title: “\(title)”", lang))
         if rule.onlyAccepted { parts.append(L("Geaccepteerd", "Accepted", lang)) }
@@ -443,6 +450,9 @@ struct SettingsView: View {
                     if store.settings.reminderAlertStyle == .fullScreen {
                         Toggle(L("Herhaal het geluid tot je reageert (alarm)", "Repeat the sound until you respond (alarm)", lang),
                                isOn: $store.settings.reminderRepeatSound)
+                        if store.settings.reminderRepeatSound {
+                            SettingsView.soundDurationStepper($store.settings.reminderSoundMaxSeconds, lang: lang)
+                        }
                     }
                     Toggle(L("Speel ook als je Mac gedempt staat", "Play even when your Mac is muted", lang),
                            isOn: $store.settings.reminderOverrideMute)
@@ -568,6 +578,22 @@ struct SettingsView: View {
     }
     static var shortVersion: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
+    }
+
+    /// Stepper voor de maximale alarm-duur (5 sec … 5 min).
+    @ViewBuilder static func soundDurationStepper(_ value: Binding<Double>, lang: Lang) -> some View {
+        Stepper(value: value, in: 5...300, step: 5) {
+            Text(L("Stop het alarm na \(soundDurationLabel(value.wrappedValue, lang))",
+                   "Stop the alarm after \(soundDurationLabel(value.wrappedValue, lang))", lang))
+        }
+    }
+
+    static func soundDurationLabel(_ seconds: Double, _ lang: Lang) -> String {
+        let t = Int(seconds.rounded())
+        let m = t / 60, s = t % 60
+        if m == 0 { return L("\(s) sec", "\(s) sec", lang) }
+        if s == 0 { return L("\(m) min", "\(m) min", lang) }
+        return L("\(m) min \(s) sec", "\(m) min \(s) sec", lang)
     }
     /// Release-notes van de geïnstalleerde versie (valt terug op de releases-pagina).
     static var releaseNotesURL: URL {
@@ -831,6 +857,16 @@ private struct RuleEditorView: View {
         )
     }
 
+    /// Alleen agenda's die Bonk daadwerkelijk inleest (gevolgd via de Agenda's-tab;
+    /// leeg = alle gevolgd) zijn als regelfilter zinvol. Reeds-gekozen agenda's
+    /// blijven zichtbaar zodat een (eventueel verouderde) keuze afvinkbaar is.
+    private var selectableCalendars: [EKCalendar] {
+        let enabled = store.settings.enabledCalendarIDs
+        return calendar.calendars.filter {
+            enabled.isEmpty || enabled.contains($0.calendarIdentifier) || draft.calendarIDs.contains($0.calendarIdentifier)
+        }
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             Form {
@@ -880,6 +916,9 @@ private struct RuleEditorView: View {
                             if draft.alertStyle == .fullScreen {
                                 Toggle(L("Herhaal het geluid tot je reageert (alarm)", "Repeat the sound until you respond (alarm)", lang),
                                        isOn: $draft.repeatSound)
+                                if draft.repeatSound {
+                                    SettingsView.soundDurationStepper($draft.soundMaxSeconds, lang: lang)
+                                }
                             }
                             Toggle(L("Speel ook als je Mac gedempt staat", "Play even when your Mac is muted", lang),
                                    isOn: $draft.overrideMute)
@@ -903,10 +942,32 @@ private struct RuleEditorView: View {
                 }
 
                 Section {
-                    Picker(L("Agenda", "Calendar", lang), selection: $draft.calendarID) {
-                        Text(L("Alle agenda's", "All calendars", lang)).tag(String?.none)
-                        ForEach(calendar.calendars, id: \.calendarIdentifier) { cal in
-                            Text(cal.title).tag(Optional(cal.calendarIdentifier))
+                    field(L("Agenda's (geen = alle)", "Calendars (none = all)", lang)) {
+                        VStack(alignment: .leading, spacing: 7) {
+                            Toggle(isOn: Binding(
+                                get: { draft.calendarIDs.isEmpty },
+                                set: { if $0 { draft.calendarIDs = [] } }
+                            )) {
+                                Text(L("Alle agenda's", "All calendars", lang)).fontWeight(.medium)
+                            }
+                            .toggleStyle(.checkbox)
+                            .disabled(draft.calendarIDs.isEmpty)
+
+                            ForEach(selectableCalendars, id: \.calendarIdentifier) { cal in
+                                Toggle(isOn: Binding(
+                                    get: { draft.calendarIDs.contains(cal.calendarIdentifier) },
+                                    set: { on in
+                                        if on { draft.calendarIDs.insert(cal.calendarIdentifier) }
+                                        else { draft.calendarIDs.remove(cal.calendarIdentifier) }
+                                    }
+                                )) {
+                                    HStack(spacing: 6) {
+                                        Circle().fill(Color(cal.color)).frame(width: 9, height: 9)
+                                        Text(cal.title)
+                                    }
+                                }
+                                .toggleStyle(.checkbox)
+                            }
                         }
                     }
                     field(L("Titel bevat (leeg = elke titel)", "Title contains (empty = any title)", lang)) {
@@ -927,6 +988,9 @@ private struct RuleEditorView: View {
                     }
                 } header: {
                     Text(L("Filter", "Filter", lang))
+                } footer: {
+                    Text(L("Alleen gevolgde agenda's staan hierboven. Een agenda inlezen doe je bij Instellingen → Agenda's.",
+                           "Only followed calendars appear above. To make Bonk read a calendar, enable it in Settings → Calendars.", lang))
                 }
             }
             .formStyle(.grouped)

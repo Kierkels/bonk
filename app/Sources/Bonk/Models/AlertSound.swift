@@ -35,27 +35,30 @@ enum AlertSound {
     /// (`content.sound = nil`); Bonk regelt het geluid hier, voor álle alertstijlen.
     /// - Parameters:
     ///   - repeating: herhaal het geluid (als alarm) tot `stop()` of `maxSeconds`.
-    ///   - forceAudible: haal de Mac tijdelijk uit mute / zet het volume omhoog, en herstel daarna.
-    static func play(_ choice: String, repeating: Bool = false, maxSeconds: Double = 30, forceAudible: Bool = false) {
+    ///   - forceAudible: als de Mac gedempt staat, haal 'm tijdelijk uit mute (het
+    ///     ingestelde systeemvolume blijft staan) en herstel de mute daarna. Het geluid
+    ///     speelt altijd op het huidige systeemvolume.
+    static func play(_ choice: String, repeating: Bool = false, maxSeconds: Double = 30,
+                     forceAudible: Bool = false) {
         stop()
         guard choice != noneChoice else { return }
 
-        if forceAudible { audioToRestore = SystemAudio.forceAudible() }
+        if forceAudible { audioToRestore = SystemAudio.unmuteTemporarily() }
 
         if repeating {
             // NSSound.beep() kan niet loopen → gebruik een herhaalbaar systeemgeluid.
             let name = (choice == defaultChoice) ? "Sosumi" : choice
-            guard let sound = NSSound(named: NSSound.Name(name)) else { NSSound.beep(); return }
+            guard let sound = makeSound(name) else { NSSound.beep(); return }
             sound.loops = true
             sound.play()
             loopingSound = sound
             let work = DispatchWorkItem { stop() }
             loopStop = work
-            DispatchQueue.main.asyncAfter(deadline: .now() + maxSeconds, execute: work)
+            DispatchQueue.main.asyncAfter(deadline: .now() + max(1, maxSeconds), execute: work)
         } else {
-            let sound: NSSound? = (choice == defaultChoice) ? NSSound(named: "Sosumi") : NSSound(named: NSSound.Name(choice))
+            let sound = makeSound((choice == defaultChoice) ? "Sosumi" : choice)
             if choice == defaultChoice, sound == nil { NSSound.beep() } else { sound?.play() }
-            // Eenmalig geluid: herstel het volume kort na afspelen.
+            // Eenmalig geluid: herstel de mute kort na afspelen.
             if audioToRestore != nil {
                 let duration = (sound?.duration ?? 1.0) + 0.4
                 let work = DispatchWorkItem { restoreAudio() }
@@ -63,6 +66,12 @@ enum AlertSound {
                 DispatchQueue.main.asyncAfter(deadline: .now() + duration, execute: work)
             }
         }
+    }
+
+    /// `NSSound(named:)` levert een gedeelde, gecachede instance — daarop `volume`/
+    /// `loops` zetten is onbetrouwbaar. We werken daarom op een verse `copy()`.
+    private static func makeSound(_ name: String) -> NSSound? {
+        NSSound(named: NSSound.Name(name))?.copy() as? NSSound
     }
 
     /// Stopt een eventueel herhalend geluid en herstelt het volume.

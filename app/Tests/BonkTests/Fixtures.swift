@@ -44,7 +44,7 @@ func makeRule(
     r.onlyAccepted = onlyAccepted
     r.daysOfWeek = daysOfWeek
     r.leadMinutes = leadMinutes
-    r.calendarID = calendarID
+    r.calendarIDs = calendarID.map { [$0] } ?? []
     r.isEnabled = isEnabled
     return r
 }

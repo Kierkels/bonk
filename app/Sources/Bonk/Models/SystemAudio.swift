@@ -9,14 +9,12 @@ enum SystemAudio {
         let muted: Bool
     }
 
-    /// Maakt geluid hoorbaar als het gedempt is of (vrijwel) op nul staat.
-    /// Geeft de vorige staat terug om later te herstellen — nil als er niets
-    /// veranderd hoefde te worden (was al hoorbaar).
-    static func forceAudible(minVolume: Int = 35) -> State? {
-        guard let state = read() else { return nil }
-        guard state.muted || state.volume < minVolume else { return nil }
-        if state.muted { setMuted(false) }
-        if state.volume < minVolume { setVolume(minVolume) }
+    /// Haalt de Mac tijdelijk uit mute zodat een alarm op het **ingestelde**
+    /// systeemvolume klinkt (het volumegetal blijft ongemoeid). Geeft de vorige
+    /// staat terug om de mute later te herstellen — nil als er niets gedempt was.
+    static func unmuteTemporarily() -> State? {
+        guard let state = read(), state.muted else { return nil }
+        setMuted(false)
         return state
     }
 

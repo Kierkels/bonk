@@ -13,15 +13,16 @@ struct MeetingRule: Codable, Identifiable, Equatable {
     var alertStyle: AlertStyle = .fullScreen
     var autoJoin: Bool = false            // open de link automatisch op starttijd
     var appearanceID: UUID? = nil         // welke weergave-preset (alleen bij schermvullend)
-    var calendarID: String? = nil         // alleen deze agenda; nil = alle agenda's
+    var calendarIDs: Set<String> = []     // alleen deze agenda's; leeg = alle agenda's
     var notifyWhenLocked: Bool = false    // bij vergrendeld scherm: notificatie + geluid (overlay zie je dan toch niet)
     var notificationSound: String = "default"  // "default" / "none" / NSSound-naam (bv. "Glass")
     var repeatSound: Bool = false         // schermvullend: geluid herhalen (als alarm) tot je reageert
+    var soundMaxSeconds: Double = 30      // hoelang het herhalen (alarm) maximaal duurt
     var overrideMute: Bool = false        // geluid ook spelen als de Mac gedempt staat (tijdelijk unmuten)
 
     func matches(_ event: UpcomingEvent) -> Bool {
         guard isEnabled else { return false }
-        if let calendarID, calendarID != event.calendarID { return false }
+        if !calendarIDs.isEmpty, !calendarIDs.contains(event.calendarID) { return false }
         let needle = titleContains.trimmingCharacters(in: .whitespacesAndNewlines)
         if !needle.isEmpty, !event.title.localizedCaseInsensitiveContains(needle) {
             return false
@@ -47,10 +48,21 @@ extension MeetingRule {
         alertStyle = try c.decodeIfPresent(AlertStyle.self, forKey: .alertStyle) ?? .fullScreen
         autoJoin = try c.decodeIfPresent(Bool.self, forKey: .autoJoin) ?? false
         appearanceID = try c.decodeIfPresent(UUID.self, forKey: .appearanceID)
-        calendarID = try c.decodeIfPresent(String.self, forKey: .calendarID)
+        // Migratie: oude regels hadden één `calendarID` → zet om naar een set.
+        if let set = try c.decodeIfPresent(Set<String>.self, forKey: .calendarIDs) {
+            calendarIDs = set
+        } else if let legacy = try? decoder.container(keyedBy: LegacyKeys.self),
+                  let single = ((try? legacy.decodeIfPresent(String.self, forKey: .calendarID)) ?? nil) {
+            calendarIDs = [single]
+        } else {
+            calendarIDs = []
+        }
         notifyWhenLocked = try c.decodeIfPresent(Bool.self, forKey: .notifyWhenLocked) ?? false
         notificationSound = try c.decodeIfPresent(String.self, forKey: .notificationSound) ?? "default"
         repeatSound = try c.decodeIfPresent(Bool.self, forKey: .repeatSound) ?? false
+        soundMaxSeconds = try c.decodeIfPresent(Double.self, forKey: .soundMaxSeconds) ?? 30
         overrideMute = try c.decodeIfPresent(Bool.self, forKey: .overrideMute) ?? false
     }
+
+    private enum LegacyKeys: String, CodingKey { case calendarID }
 }

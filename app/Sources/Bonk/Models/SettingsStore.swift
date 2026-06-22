@@ -42,6 +42,7 @@ struct AppSettings: Codable {
     var reminderSound: String = "default"
     var reminderNotifyWhenLocked: Bool = false
     var reminderRepeatSound: Bool = false
+    var reminderSoundMaxSeconds: Double = 30
     var reminderOverrideMute: Bool = false
     var calendarColors: [String: String] = [:]   // calendarID → hex-kleur in het menu
     var calendarsMigrated: Bool = false           // eenmalige migratie naar "leeg = geen"
@@ -81,7 +82,7 @@ struct AppSettings: Codable {
     enum CodingKeys: String, CodingKey {
         case rules, enabledCalendarIDs, globalEnabled, appearances, menuBarStyle, displayDays, maxMeetings, reminders, calendarColors, calendarsMigrated, languageOverride, appearanceOverride
         case menuBarHighlightEnabled, menuBarHighlightMinutes, menuBarHighlightColorMode, menuBarHighlightColorHex
-        case reminderAlertStyle, reminderLeadMinutes, reminderAppearanceID, reminderSound, reminderNotifyWhenLocked, reminderRepeatSound, reminderOverrideMute
+        case reminderAlertStyle, reminderLeadMinutes, reminderAppearanceID, reminderSound, reminderNotifyWhenLocked, reminderRepeatSound, reminderSoundMaxSeconds, reminderOverrideMute
     }
     private enum LegacyKeys: String, CodingKey {
         case overlayAppearance
@@ -108,6 +109,7 @@ struct AppSettings: Codable {
         reminderSound = try c.decodeIfPresent(String.self, forKey: .reminderSound) ?? "default"
         reminderNotifyWhenLocked = try c.decodeIfPresent(Bool.self, forKey: .reminderNotifyWhenLocked) ?? false
         reminderRepeatSound = try c.decodeIfPresent(Bool.self, forKey: .reminderRepeatSound) ?? false
+        reminderSoundMaxSeconds = try c.decodeIfPresent(Double.self, forKey: .reminderSoundMaxSeconds) ?? 30
         reminderOverrideMute = try c.decodeIfPresent(Bool.self, forKey: .reminderOverrideMute) ?? false
         calendarColors = try c.decodeIfPresent([String: String].self, forKey: .calendarColors) ?? [:]
         calendarsMigrated = try c.decodeIfPresent(Bool.self, forKey: .calendarsMigrated) ?? false

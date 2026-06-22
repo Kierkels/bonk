@@ -186,6 +186,7 @@ enum MeetingEngine {
         r.notificationSound = s.reminderSound
         r.notifyWhenLocked = s.reminderNotifyWhenLocked
         r.repeatSound = s.reminderRepeatSound
+        r.soundMaxSeconds = s.reminderSoundMaxSeconds
         r.overrideMute = s.reminderOverrideMute
         return r
     }

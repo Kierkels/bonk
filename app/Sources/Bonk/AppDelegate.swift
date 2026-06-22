@@ -150,7 +150,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
             object: calendar.store,
             queue: .main
         ) { [weak self] _ in
-            Task { @MainActor in self?.tick() }
+            Task { @MainActor in
+                self?.calendar.reloadCalendars()   // nieuwe/gesyncte agenda's tonen
+                self?.tick()
+            }
         }
     }
 
@@ -314,6 +317,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
         if rule.alertStyle != .ignore {
             AlertSound.play(rule.notificationSound,
                             repeating: rule.alertStyle == .fullScreen && rule.repeatSound,
+                            maxSeconds: rule.soundMaxSeconds,
                             forceAudible: rule.overrideMute)
         }
     }

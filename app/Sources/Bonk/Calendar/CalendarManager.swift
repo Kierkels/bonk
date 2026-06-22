@@ -13,10 +13,20 @@ final class CalendarManager: ObservableObject {
         do {
             let granted = try await store.requestFullAccessToEvents()
             authorized = granted
-            if granted { calendars = store.calendars(for: .event) }
+            if granted { reloadCalendars() }
         } catch {
             authorized = false
         }
+    }
+
+    /// Ververst de lijst met beschikbare agenda's (gesorteerd op naam). Nodig
+    /// omdat agenda's na de eerste laadbeurt kunnen wijzigen (nieuwe/gesyncte/
+    /// geabonneerde agenda's) — anders mist de UI ze tot een herstart.
+    func reloadCalendars() {
+        guard authorized else { return }
+        store.refreshSourcesIfNecessary()
+        calendars = store.calendars(for: .event)
+            .sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
     }
 
     func upcomingEvents(within hours: Int, enabledCalendarIDs: Set<String>) -> [UpcomingEvent] {
