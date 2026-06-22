@@ -88,9 +88,11 @@ struct MenuView: View {
         } label: {
             HStack(spacing: 9) {
                 Image(systemName: "arrow.down.circle.fill").font(.title3)
+                    .foregroundStyle(accent)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(L("Update beschikbaar", "Update available", lang))
                         .font(.callout.weight(.semibold))
+                        .foregroundStyle(.primary)
                     Text(L("Versie \(version) — nu downloaden", "Version \(version) — download now", lang))
                         .font(.caption2).foregroundStyle(.secondary)
                 }
@@ -98,21 +100,37 @@ struct MenuView: View {
             }
             .padding(10)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(accent.opacity(0.15), in: RoundedRectangle(cornerRadius: 10))
-            .foregroundStyle(accent)
+            .background(accent.opacity(0.18), in: RoundedRectangle(cornerRadius: 10))
+            .overlay(
+                RoundedRectangle(cornerRadius: 10).strokeBorder(accent.opacity(0.5), lineWidth: 1)
+            )
         }
         .buttonStyle(.plain)
         .help(L("Open de downloadpagina", "Open the download page", lang))
     }
 
     private var emptyState: some View {
-        HStack(spacing: 10) {
-            Image(systemName: store.settings.globalEnabled ? "calendar" : "moon.zzz.fill")
+        let enabled = store.settings.globalEnabled
+        let days = store.settings.displayDays
+        let window = days == 1
+            ? L("alleen vandaag", "today only", lang)
+            : L("komende \(days) dagen", "next \(days) days", lang)
+        return HStack(alignment: .top, spacing: 10) {
+            Image(systemName: enabled ? "calendar" : "moon.zzz.fill")
                 .font(.title3).foregroundStyle(.secondary)
-            Text(store.settings.globalEnabled
-                 ? L("Geen meetings op komst", "No meetings coming up", lang)
-                 : L("Bonk staat uit", "Bonk is off", lang))
-                .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(enabled
+                     ? L("Geen meetings op komst", "No meetings coming up", lang)
+                     : L("Bonk staat uit", "Bonk is off", lang))
+                    .foregroundStyle(.secondary)
+                if enabled {
+                    Text(L("Misschien door je filters — weergave (\(window)), agenda's of regels.",
+                           "Maybe due to your filters — display (\(window)), calendars or rules.", lang))
+                        .font(.caption2).foregroundStyle(.tertiary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.vertical, 6)

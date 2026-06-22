@@ -140,6 +140,9 @@ struct SettingsView: View {
 
         Section {
             LabeledContent(L("Versie", "Version", lang)) {
+                Text(Self.shortVersion).foregroundStyle(.secondary)
+            }
+            LabeledContent(L("Status", "Status", lang)) {
                 if updates.isChecking {
                     Text(L("Controleren…", "Checking…", lang)).foregroundStyle(.secondary)
                 } else if let version = updates.availableVersion, let url = updates.releaseURL {
@@ -160,6 +163,9 @@ struct SettingsView: View {
                     Label(L("Je gebruikt de nieuwste versie", "You're on the latest version", lang),
                           systemImage: "checkmark.circle.fill").foregroundStyle(.green)
                 }
+            }
+            Link(destination: Self.releaseNotesURL) {
+                Label(L("Bekijk wat er nieuw is", "See what's new", lang), systemImage: "sparkles")
             }
             Button(L("Nu controleren op updates", "Check for updates now", lang)) {
                 Task { await updates.check(notify: false, lang: lang) }
@@ -559,6 +565,14 @@ struct SettingsView: View {
         let short = info?["CFBundleShortVersionString"] as? String ?? "?"
         let build = info?["CFBundleVersion"] as? String ?? "?"
         return "\(short) (build \(build))"
+    }
+    static var shortVersion: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
+    }
+    /// Release-notes van de geïnstalleerde versie (valt terug op de releases-pagina).
+    static var releaseNotesURL: URL {
+        URL(string: "https://github.com/Kierkels/bonk/releases/tag/v\(shortVersion)")
+            ?? URL(string: "https://github.com/Kierkels/bonk/releases")!
     }
     static var appName: String {
         Bundle.main.infoDictionary?["CFBundleDisplayName"] as? String
