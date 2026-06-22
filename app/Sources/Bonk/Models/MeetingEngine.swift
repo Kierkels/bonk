@@ -65,6 +65,26 @@ enum MeetingEngine {
         return Classification(upcoming: upcoming, skipped: cal.skipped)
     }
 
+    /// Beperkt een (op starttijd gesorteerde) lijst tot wat het menu/de menubalk
+    /// toont: een dagvenster van `days` dagen (1 = alleen vandaag) en optioneel een
+    /// maximum aantal **agenda-meetings** (`maxMeetings`, nil = alle). Herinneringen
+    /// tellen niet mee voor het maximum en blijven altijd zichtbaar binnen het venster.
+    /// Dit raakt alléén de weergave — niet het vuren van waarschuwingen.
+    static func displayLimited(_ events: [UpcomingEvent], now: Date,
+                               days: Int, maxMeetings: Int?,
+                               calendar: Calendar = .current) -> [UpcomingEvent] {
+        let startOfToday = calendar.startOfDay(for: now)
+        let windowEnd = calendar.date(byAdding: .day, value: max(1, days), to: startOfToday) ?? now
+        let inWindow = events.filter { $0.start < windowEnd }
+        guard let maxMeetings, maxMeetings >= 0 else { return inWindow }
+        var meetingCount = 0
+        return inWindow.filter { e in
+            if isReminderID(e.id) { return true }
+            meetingCount += 1
+            return meetingCount <= maxMeetings
+        }
+    }
+
     // MARK: - Vuren & snooze
 
     enum AlertDecision: Equatable {
@@ -139,7 +159,7 @@ enum MeetingEngine {
                                 now: Date,
                                 settings: AppSettings) -> HighlightChoice {
         guard settings.globalEnabled, settings.menuBarHighlightEnabled, let n = next else { return .none }
-        if settings.menuBarOnlyToday, !Calendar.current.isDate(n.start, inSameDayAs: now) { return .none }
+        // (Het dagvenster is al toegepast op `next`/`upcoming` via `displayLimited`.)
         let minutesUntil = n.start.timeIntervalSince(now) / 60
         guard minutesUntil <= Double(settings.menuBarHighlightMinutes) else { return .none }
 

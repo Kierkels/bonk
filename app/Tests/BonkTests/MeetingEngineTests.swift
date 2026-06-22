@@ -174,14 +174,13 @@ final class MeetingEngineTests: XCTestCase {
     // MARK: Markering
 
     private func settings(highlight: Bool = true, minutes: Int = 5,
-                          mode: String = "calendar", onlyToday: Bool = false,
+                          mode: String = "calendar",
                           enabled: Bool = true) -> AppSettings {
         var s = AppSettings.default
         s.globalEnabled = enabled
         s.menuBarHighlightEnabled = highlight
         s.menuBarHighlightMinutes = minutes
         s.menuBarHighlightColorMode = mode
-        s.menuBarOnlyToday = onlyToday
         return s
     }
 
@@ -220,6 +219,50 @@ final class MeetingEngineTests: XCTestCase {
         let r = makeEvent(id: "reminder:abc", start: now.addingTimeInterval(60), calendarID: "bonk.reminder")
         XCTAssertEqual(MeetingEngine.highlightChoice(next: r, upcoming: [r], now: now,
                                                      settings: settings()), .calendar("bonk.reminder"))
+    }
+
+    // MARK: Dagvenster + maximum (displayLimited)
+
+    private var utc: Calendar {
+        var c = Calendar(identifier: .gregorian)
+        c.timeZone = TimeZone(identifier: "UTC")!
+        return c
+    }
+
+    func testDisplayLimitedTodayOnlyDropsTomorrow() {
+        let sod = utc.startOfDay(for: now)
+        let today = makeEvent(id: "today", start: sod.addingTimeInterval(12 * 3600))
+        let tomorrow = makeEvent(id: "tomorrow", start: sod.addingTimeInterval(36 * 3600))
+        let out = MeetingEngine.displayLimited([today, tomorrow], now: now, days: 1, maxMeetings: nil, calendar: utc)
+        XCTAssertEqual(out.map { $0.id }, ["today"])
+    }
+
+    func testDisplayLimitedTwoDaysKeepsTomorrowNotDayAfter() {
+        let sod = utc.startOfDay(for: now)
+        let today = makeEvent(id: "today", start: sod.addingTimeInterval(12 * 3600))
+        let tomorrow = makeEvent(id: "tomorrow", start: sod.addingTimeInterval(36 * 3600))
+        let dayAfter = makeEvent(id: "after", start: sod.addingTimeInterval(60 * 3600))
+        let out = MeetingEngine.displayLimited([today, tomorrow, dayAfter], now: now, days: 2, maxMeetings: nil, calendar: utc)
+        XCTAssertEqual(out.map { $0.id }, ["today", "tomorrow"])
+    }
+
+    func testDisplayLimitedMaxCountsMeetingsButAlwaysKeepsReminders() {
+        let sod = utc.startOfDay(for: now)
+        let m1 = makeEvent(id: "m1", start: sod.addingTimeInterval(9 * 3600))
+        let r1 = makeEvent(id: "reminder:1", start: sod.addingTimeInterval(10 * 3600), calendarID: "bonk.reminder")
+        let m2 = makeEvent(id: "m2", start: sod.addingTimeInterval(11 * 3600))
+        let m3 = makeEvent(id: "m3", start: sod.addingTimeInterval(12 * 3600))
+        let r2 = makeEvent(id: "reminder:2", start: sod.addingTimeInterval(13 * 3600), calendarID: "bonk.reminder")
+        let out = MeetingEngine.displayLimited([m1, r1, m2, m3, r2], now: now, days: 1, maxMeetings: 2, calendar: utc)
+        // Max 2 meetings → m1 & m2 blijven (m3 valt af); beide herinneringen blijven.
+        XCTAssertEqual(out.map { $0.id }, ["m1", "reminder:1", "m2", "reminder:2"])
+    }
+
+    func testDisplayLimitedNilMaxKeepsAllMeetings() {
+        let sod = utc.startOfDay(for: now)
+        let evts = (0..<6).map { makeEvent(id: "m\($0)", start: sod.addingTimeInterval(Double(9 + $0) * 3600)) }
+        let out = MeetingEngine.displayLimited(evts, now: now, days: 1, maxMeetings: nil, calendar: utc)
+        XCTAssertEqual(out.count, 6)
     }
 
     // MARK: Herinnering-ids

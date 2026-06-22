@@ -7,7 +7,9 @@
 # on the existing version's release.
 #
 # Note: the app is ad-hoc signed (no paid Apple Developer ID), so the DMG is not
-# notarized — on first launch users right-click the app → Open.
+# notarized — on first launch macOS blocks it and users have to allow it via
+# System Settings > Privacy & Security > "Open Anyway" (the old right-click >
+# Open bypass was removed in macOS Sequoia).
 
 name: Release app
 
@@ -81,9 +83,9 @@ jobs:
           $CHANGES
 
           ---
-          Download \`Bonk-$V.dmg\` below, open the DMG and drag Bonk to Applications.
-
-          > The app is ad-hoc signed (no paid Apple Developer account), so it isn't notarized. On first launch: **right-click Bonk → Open** and confirm."
+          > **HOW TO INSTALL**
+          >
+          > Download \`Bonk-$V.dmg\` below, open the DMG and drag Bonk to Applications. Bonk is ad-hoc signed (no paid Apple Developer account), so macOS can't verify it. The first time you open it, macOS will block it: go to **System Settings → Privacy & Security**, scroll down to the message about Bonk and click **Open Anyway**, then confirm. (Only needed once.) See [Apple's guide](https://support.apple.com/en-us/guide/mac-help/mh40616/mac) if you get stuck."
           if gh release view "$TAG" >/dev/null 2>&1; then
             echo "Release $TAG exists — updating asset."
             gh release upload "$TAG" "Bonk-$V.dmg" --clobber

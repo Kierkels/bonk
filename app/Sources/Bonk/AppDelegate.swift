@@ -42,9 +42,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
     /// Tekst voor in de menubalk, afhankelijk van de gekozen stijl.
     var menuBarText: String? {
         let style = settingsStore.settings.menuBarStyle
+        // `nextEvent` is al beperkt tot het ingestelde dagvenster (zie tick).
         guard style != .icon, let n = nextEvent else { return nil }
-        if settingsStore.settings.menuBarOnlyToday,
-           !Calendar.current.isDateInToday(n.start) { return nil }
 
         let cd = shortCountdown(n.start.timeIntervalSinceNow)
         let time = menuBarTime(n.start)
@@ -194,8 +193,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
 
         // Agenda-meetings volgen de regels; herinneringen staan los daarvan en
         // volgen de globale herinnering-instellingen.
+        // Haal genoeg vooruit op om het ingestelde dagvenster te kunnen vullen
+        // (minimaal 48u — voor het vuren van meetings net buiten "vandaag").
         let calendarEvents = calendar.upcomingEvents(
-            within: 48,
+            within: fetchHorizonHours(now: now),
             enabledCalendarIDs: settingsStore.settings.enabledCalendarIDs
         )
         let reminders = reminderEvents(now: now)
@@ -212,9 +213,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
         let classified = MeetingEngine.visibleEvents(calendarEvents: calendarEvents, reminders: reminders,
                                                       now: now, rules: settingsStore.settings.rules,
                                                       dismissed: dismissedIDs, forceShown: forceShownIDs)
-        upcoming = classified.upcoming
-        nextEvent = classified.next
-        skipped = classified.skipped
+        // Dagvenster + optioneel max — raakt alléén de weergave (menu + menubalk),
+        // niet het vuren hieronder (dat blijft over het volledige venster lopen).
+        let days = settingsStore.settings.displayDays
+        let maxMeetings = settingsStore.settings.maxMeetings
+        upcoming = MeetingEngine.displayLimited(classified.upcoming, now: now, days: days, maxMeetings: maxMeetings)
+        nextEvent = upcoming.first
+        skipped = MeetingEngine.displayLimited(classified.skipped, now: now, days: days, maxMeetings: nil)
 
         writeDiagnostics(events, now: now)
 
@@ -352,6 +357,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
     /// Zet custom reminders om naar events. Een herinnering is een momentpunt
     /// (geen duur), dus `end == start`. De levensduur wordt niet via de eindtijd
     /// geregeld maar door consumeren-bij-vuren (in `tick`).
+    /// Hoeveel uur vooruit agenda-events op te halen, zodat het ingestelde
+    /// dagvenster (`displayDays`) volledig gevuld kan worden. Minimaal 48u, zodat
+    /// meetings net buiten "vandaag" nog op tijd kunnen vuren.
+    private func fetchHorizonHours(now: Date) -> Int {
+        let days = max(1, settingsStore.settings.displayDays)
+        let startOfToday = Calendar.current.startOfDay(for: now)
+        let windowEnd = Calendar.current.date(byAdding: .day, value: days, to: startOfToday) ?? now
+        let hours = Int((windowEnd.timeIntervalSince(now) / 3600).rounded(.up))
+        return max(48, hours)
+    }
+
     private func reminderEvents(now: Date) -> [UpcomingEvent] {
         let cal = Calendar.current
         let horizon = now.addingTimeInterval(48 * 3600)
@@ -365,7 +381,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
                 end: reminder.date,
                 calendarTitle: "Herinnering",
                 calendarID: "bonk.reminder",
-                isAccepted: true,
+                isAccepted: false, // niet relevant voor herinneringen (geen "Geaccepteerd"-badge)
                 joinURL: nil,
                 location: nil,
                 notes: reminder.notes.isEmpty ? nil : reminder.notes,

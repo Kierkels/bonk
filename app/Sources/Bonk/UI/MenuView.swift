@@ -219,62 +219,107 @@ struct MenuView: View {
     }
 
     private var laterSection: some View {
-        let items = Array(laterMeetings.prefix(4))
-        return VStack(alignment: .leading, spacing: 6) {
+        // `upcoming` is al beperkt tot het ingestelde dagvenster + maximum (zie tick).
+        // Subtiel gegroepeerd per dag — de dag staat in een kopje, de rijen tonen
+        // alleen het tijdstip.
+        let groups = groupedByDay(laterMeetings)
+        return VStack(alignment: .leading, spacing: 14) {
             Text(L("DAARNA", "LATER", lang))
                 .font(.caption2.weight(.bold)).tracking(0.6)
                 .foregroundStyle(.secondary)
 
-            VStack(spacing: 0) {
-                ForEach(Array(items.enumerated()), id: \.element.id) { index, event in
-                    HStack(spacing: 10) {
-                        RoundedRectangle(cornerRadius: 2).fill(calendarColor(event.calendarID))
-                            .frame(width: 3)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(event.title).font(.callout).lineLimit(1)
-                            HStack(spacing: 5) {
-                                Text(shortTime(event))
-                                if let room = roomText(event) {
-                                    Text("· \(room)").lineLimit(1)
-                                }
-                            }
-                            .font(.caption2).foregroundStyle(.secondary)
-                        }
-                        Spacer(minLength: 0)
-                        if event.joinURL != nil {
-                            Image(systemName: "video.fill").font(.caption2).foregroundStyle(.secondary)
-                        }
-                        if event.id.hasPrefix("reminder:") {
-                            Button {
-                                app.editReminder(id: event.id)
-                            } label: {
-                                Image(systemName: "pencil").font(.callout).foregroundStyle(.secondary)
-                            }
-                            .buttonStyle(.plain)
-                            .help(L("Herinnering bewerken", "Edit reminder", lang))
-                        }
-                        Button {
-                            app.skipMeeting(id: event.id)
-                        } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.callout).foregroundStyle(.secondary)
-                        }
-                        .buttonStyle(.plain)
-                        .help(reminderOrMeetingIgnoreHelp(event))
-                    }
-                    .padding(.vertical, 7)
-                    .contentShape(Rectangle())
+            // Elke dag krijgt een eigen kaartje, met het dag-kopje erboven.
+            ForEach(Array(groups.enumerated()), id: \.element.key) { _, group in
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(dayHeaderLabel(group.key))
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.secondary)
 
-                    if index < items.count - 1 {
-                        Divider().opacity(0.4)
+                    VStack(spacing: 0) {
+                        ForEach(Array(group.events.enumerated()), id: \.element.id) { eventIndex, event in
+                            laterRow(event)
+                            if eventIndex < group.events.count - 1 {
+                                Divider().opacity(0.4)
+                            }
+                        }
                     }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 2)
+                    .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 12))
                 }
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 2)
-            .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 12))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder private func laterRow(_ event: UpcomingEvent) -> some View {
+        HStack(spacing: 10) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(event.title).font(.callout).lineLimit(1)
+                HStack(spacing: 5) {
+                    Text(clockTime(event))
+                    if let room = roomText(event) {
+                        Text("· \(room)").lineLimit(1)
+                    }
+                }
+                .font(.caption2).foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 0)
+            if event.joinURL != nil {
+                Image(systemName: "video.fill").font(.caption2).foregroundStyle(.secondary)
+            }
+            if event.id.hasPrefix("reminder:") {
+                Button {
+                    app.editReminder(id: event.id)
+                } label: {
+                    Image(systemName: "pencil").font(.callout).foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .help(L("Herinnering bewerken", "Edit reminder", lang))
+            }
+            Button {
+                app.skipMeeting(id: event.id)
+            } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.callout).foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+            .help(reminderOrMeetingIgnoreHelp(event))
+        }
+        // Agenda-kleurstreepje als leading overlay i.p.v. een greedy HStack-sibling:
+        // zo matcht het de rijhoogte en wordt het niet gecomprimeerd bij weinig ruimte.
+        .padding(.leading, 13)
+        .overlay(alignment: .leading) {
+            RoundedRectangle(cornerRadius: 2).fill(calendarColor(event.calendarID))
+                .frame(width: 3)
+        }
+        .padding(.vertical, 7)
+        .contentShape(Rectangle())
+    }
+
+    /// Groepeert (op starttijd gesorteerde) events per kalenderdag, volgorde behouden.
+    private func groupedByDay(_ events: [UpcomingEvent]) -> [(key: Date, events: [UpcomingEvent])] {
+        let cal = Calendar.current
+        var order: [Date] = []
+        var map: [Date: [UpcomingEvent]] = [:]
+        for e in events {
+            let day = cal.startOfDay(for: e.start)
+            if map[day] == nil { order.append(day) }
+            map[day, default: []].append(e)
+        }
+        return order.map { (key: $0, events: map[$0] ?? []) }
+    }
+
+    /// Subtiel dag-kopje: "Vandaag" / "Morgen" / "Vrijdag 26 jun".
+    private func dayHeaderLabel(_ date: Date) -> String {
+        let cal = Calendar.current
+        if cal.isDateInToday(date) { return L("Vandaag", "Today", lang) }
+        if cal.isDateInTomorrow(date) { return L("Morgen", "Tomorrow", lang) }
+        let df = DateFormatter()
+        df.locale = Locale(identifier: lang == .en ? "en_US" : "nl_NL")
+        df.dateFormat = "EEEE d MMM"
+        let s = df.string(from: date)
+        return s.prefix(1).uppercased() + s.dropFirst()
     }
 
     private var skippedSection: some View {
@@ -316,6 +361,13 @@ struct MenuView: View {
             .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 12))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// Alleen het tijdstip (de dag staat al in het dag-kopje van de lijst).
+    private func clockTime(_ event: UpcomingEvent) -> String {
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm"
+        return f.string(from: event.start)
     }
 
     private func shortTime(_ event: UpcomingEvent) -> String {

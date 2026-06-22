@@ -24,7 +24,7 @@ struct SettingsView: View {
         func title(_ lang: Lang) -> String {
             switch self {
             case .general:    return L("Algemeen", "General", lang)
-            case .menubar:    return L("Menubalk", "Menu bar", lang)
+            case .menubar:    return L("Tonen", "Display", lang)
             case .rules:      return L("Regels", "Rules", lang)
             case .reminders:  return L("Herinneringen", "Reminders", lang)
             case .appearance: return L("Weergave", "Appearance", lang)
@@ -34,7 +34,7 @@ struct SettingsView: View {
         var icon: String {
             switch self {
             case .general:    return "gearshape"
-            case .menubar:    return "menubar.rectangle"
+            case .menubar:    return "eye"
             case .rules:      return "slider.horizontal.3"
             case .reminders:  return "alarm"
             case .appearance: return "paintbrush"
@@ -175,17 +175,47 @@ struct SettingsView: View {
 
     // MARK: Menubalk
 
+    /// Aan/uit voor het maximum: aan → val terug op 5, uit → geen limiet (nil).
+    private var maxMeetingsEnabled: Binding<Bool> {
+        Binding(get: { store.settings.maxMeetings != nil },
+                set: { store.settings.maxMeetings = $0 ? (store.settings.maxMeetings ?? 5) : nil })
+    }
+    private var maxMeetingsValue: Binding<Int> {
+        Binding(get: { store.settings.maxMeetings ?? 5 },
+                set: { store.settings.maxMeetings = $0 })
+    }
+
     @ViewBuilder private var menuBarTab: some View {
         Section {
             Picker(L("Menubalk toont", "Menu bar shows", lang), selection: $store.settings.menuBarStyle) {
                 ForEach(MenuBarStyle.allCases) { Text($0.label(lang)).tag($0) }
             }
-            Toggle(L("Alleen voor meetings van vandaag", "Only for today's meetings", lang), isOn: $store.settings.menuBarOnlyToday)
         } header: {
             Text(L("Weergave", "Display", lang))
         } footer: {
-            Text(L("Wat er naast het icoon verschijnt voor de eerstvolgende meeting. Met ‘alleen vandaag’ toont de menubalk niets als de meeting niet vandaag is.",
-                   "What appears next to the icon for the next meeting. With ‘only today’ the menu bar shows nothing if the meeting isn't today.", lang))
+            Text(L("Wat er naast het icoon verschijnt voor de eerstvolgende meeting.",
+                   "What appears next to the icon for the next meeting.", lang))
+        }
+
+        Section {
+            Stepper(value: $store.settings.displayDays, in: 1...14) {
+                LabeledContent(L("Tonen", "Show", lang),
+                               value: store.settings.displayDays == 1
+                                   ? L("alleen vandaag", "today only", lang)
+                                   : L("\(store.settings.displayDays) dagen", "\(store.settings.displayDays) days", lang))
+            }
+            Toggle(L("Maximum aantal meetings", "Maximum number of meetings", lang), isOn: maxMeetingsEnabled)
+            if let max = store.settings.maxMeetings {
+                Stepper(value: maxMeetingsValue, in: 1...50) {
+                    LabeledContent(L("Maximaal", "At most", lang),
+                                   value: L("\(max) meeting(s)", "\(max) meeting(s)", lang))
+                }
+            }
+        } header: {
+            Text(L("Wat tonen", "What to show", lang))
+        } footer: {
+            Text(L("Geldt voor de menubalk én het menu. Het maximum telt alleen agenda-meetings — herinneringen worden altijd getoond.",
+                   "Applies to the menu bar and the menu. The maximum counts calendar meetings only — reminders are always shown.", lang))
         }
 
         Section {
