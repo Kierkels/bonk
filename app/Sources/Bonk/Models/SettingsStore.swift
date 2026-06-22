@@ -28,8 +28,9 @@ struct AppSettings: Codable {
     var globalEnabled: Bool
     var appearances: [OverlayAppearance]  // herbruikbare weergave-presets
     var menuBarStyle: MenuBarStyle = .countdown
-    var displayDays: Int = 1              // hoeveel dagen tonen (menubalk + menu); 1 = alleen vandaag
+    var displayDays: Int = 1              // hoeveel dagen het menu toont; 1 = alleen vandaag
     var maxMeetings: Int? = nil           // optioneel maximum aantal agenda-meetings (nil = alle)
+    var menuBarOnlyToday: Bool = false    // menubalk-tekst alleen tonen als de eerstvolgende meeting vandaag is
     var menuBarHighlightEnabled: Bool = false      // gekleurde achtergrond als meeting nabij is
     var menuBarHighlightMinutes: Int = 5           // "nabij" = binnen zoveel minuten
     var menuBarHighlightColorMode: String = "calendar"  // calendar | custom
@@ -80,7 +81,7 @@ struct AppSettings: Codable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case rules, enabledCalendarIDs, globalEnabled, appearances, menuBarStyle, displayDays, maxMeetings, reminders, calendarColors, calendarsMigrated, languageOverride, appearanceOverride
+        case rules, enabledCalendarIDs, globalEnabled, appearances, menuBarStyle, displayDays, maxMeetings, menuBarOnlyToday, reminders, calendarColors, calendarsMigrated, languageOverride, appearanceOverride
         case menuBarHighlightEnabled, menuBarHighlightMinutes, menuBarHighlightColorMode, menuBarHighlightColorHex
         case reminderAlertStyle, reminderLeadMinutes, reminderAppearanceID, reminderSound, reminderNotifyWhenLocked, reminderRepeatSound, reminderSoundMaxSeconds, reminderOverrideMute
     }
@@ -98,6 +99,7 @@ struct AppSettings: Codable {
         menuBarStyle = try c.decodeIfPresent(MenuBarStyle.self, forKey: .menuBarStyle) ?? .countdown
         displayDays = try c.decodeIfPresent(Int.self, forKey: .displayDays) ?? 1
         maxMeetings = try c.decodeIfPresent(Int.self, forKey: .maxMeetings)
+        menuBarOnlyToday = try c.decodeIfPresent(Bool.self, forKey: .menuBarOnlyToday) ?? false
         menuBarHighlightEnabled = try c.decodeIfPresent(Bool.self, forKey: .menuBarHighlightEnabled) ?? false
         menuBarHighlightMinutes = try c.decodeIfPresent(Int.self, forKey: .menuBarHighlightMinutes) ?? 5
         menuBarHighlightColorMode = try c.decodeIfPresent(String.self, forKey: .menuBarHighlightColorMode) ?? "calendar"

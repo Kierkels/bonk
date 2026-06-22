@@ -160,6 +160,7 @@ enum MeetingEngine {
                                 settings: AppSettings) -> HighlightChoice {
         guard settings.globalEnabled, settings.menuBarHighlightEnabled, let n = next else { return .none }
         // (Het dagvenster is al toegepast op `next`/`upcoming` via `displayLimited`.)
+        if settings.menuBarOnlyToday, !Calendar.current.isDate(n.start, inSameDayAs: now) { return .none }
         let minutesUntil = n.start.timeIntervalSince(now) / 60
         guard minutesUntil <= Double(settings.menuBarHighlightMinutes) else { return .none }
 

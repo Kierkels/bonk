@@ -44,6 +44,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
         let style = settingsStore.settings.menuBarStyle
         // `nextEvent` is al beperkt tot het ingestelde dagvenster (zie tick).
         guard style != .icon, let n = nextEvent else { return nil }
+        // Menubalk-tekst optioneel alleen voor meetings van vandaag (los van het
+        // dagvenster dat het menu gebruikt).
+        if settingsStore.settings.menuBarOnlyToday,
+           !Calendar.current.isDateInToday(n.start) { return nil }
 
         let cd = shortCountdown(n.start.timeIntervalSinceNow)
         let time = menuBarTime(n.start)

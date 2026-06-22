@@ -199,11 +199,13 @@ struct SettingsView: View {
             Picker(L("Menubalk toont", "Menu bar shows", lang), selection: $store.settings.menuBarStyle) {
                 ForEach(MenuBarStyle.allCases) { Text($0.label(lang)).tag($0) }
             }
+            Toggle(L("Alleen voor meetings van vandaag", "Only for today's meetings", lang),
+                   isOn: $store.settings.menuBarOnlyToday)
         } header: {
-            Text(L("Weergave", "Display", lang))
+            Text(L("Menubalk", "Menu bar", lang))
         } footer: {
-            Text(L("Wat er naast het icoon verschijnt voor de eerstvolgende meeting.",
-                   "What appears next to the icon for the next meeting.", lang))
+            Text(L("Wat er naast het icoon verschijnt voor de eerstvolgende meeting. Met ‘alleen vandaag’ toont de menubalk niets als die meeting niet vandaag is (het menu zelf volgt nog steeds je dagvenster).",
+                   "What appears next to the icon for the next meeting. With ‘only today’ the menu bar shows nothing if that meeting isn't today (the menu itself still follows your day window).", lang))
         }
 
         Section {
@@ -223,8 +225,8 @@ struct SettingsView: View {
         } header: {
             Text(L("Wat tonen", "What to show", lang))
         } footer: {
-            Text(L("Geldt voor de menubalk én het menu. Het maximum telt alleen agenda-meetings — herinneringen worden altijd getoond.",
-                   "Applies to the menu bar and the menu. The maximum counts calendar meetings only — reminders are always shown.", lang))
+            Text(L("Het maximum telt alleen agenda-meetings — herinneringen worden altijd getoond.",
+                   "The maximum counts calendar meetings only — reminders are always shown.", lang))
         }
 
         Section {

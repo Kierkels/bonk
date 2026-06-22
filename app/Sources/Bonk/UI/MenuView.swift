@@ -66,7 +66,20 @@ struct MenuView: View {
         .buttonStyle(.plain)
         .padding(14)
         .frame(width: 300)
+        // MenuBarExtra(.window) groeit wel mee maar krimpt niet betrouwbaar als de
+        // inhoud kleiner wordt (bv. 3 dagen → alleen vandaag) → te groot/glitcherig
+        // venster. `fixedSize` laat de hosting-view z'n ideale hoogte gebruiken, en
+        // een `id` die met de lay-outhoogte meeverandert dwingt een rebuild +
+        // herberekening van de venstergrootte af.
+        .fixedSize(horizontal: false, vertical: true)
         .preferredColorScheme(store.colorScheme)
+        .id(layoutKey)
+    }
+
+    /// Verandert zodra de inhoud van hoogte kan wijzigen, zodat het popover-venster
+    /// opnieuw wordt opgemeten (zie `.id` hierboven).
+    private var layoutKey: String {
+        "\(calendar.authorized)|\(app.upcoming.count)|\(app.skipped.count)|\(groupedByDay(laterMeetings).count)|\(updates.availableVersion != nil)"
     }
 
     // MARK: Onderdelen
