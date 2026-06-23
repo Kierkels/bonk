@@ -117,7 +117,7 @@ struct SettingsView: View {
         Section {
             Toggle(L("Bonk ingeschakeld", "Bonk enabled", lang), isOn: $store.settings.globalEnabled)
         } footer: {
-            Text(L("Wanneer uit, waarschuwt Bonk nergens voor.",
+            subtleFooter(L("Wanneer uit, waarschuwt Bonk nergens voor.",
                    "When off, Bonk won't alert you about anything.", lang))
         }
 
@@ -177,7 +177,7 @@ struct SettingsView: View {
         } header: {
             Text(L("Updates", "Updates", lang))
         } footer: {
-            Text(L("Bonk controleert automatisch op nieuwe versies en waarschuwt je als er één is.",
+            subtleFooter(L("Bonk controleert automatisch op nieuwe versies en waarschuwt je als er één is.",
                    "Bonk checks for new versions automatically and lets you know when one is available.", lang))
         }
     }
@@ -204,7 +204,7 @@ struct SettingsView: View {
         } header: {
             Text(L("Menubalk", "Menu bar", lang))
         } footer: {
-            Text(L("Wat er naast het icoon verschijnt voor de eerstvolgende meeting. Met ‘alleen vandaag’ toont de menubalk niets als die meeting niet vandaag is (het menu zelf volgt nog steeds je dagvenster).",
+            subtleFooter(L("Wat er naast het icoon verschijnt voor de eerstvolgende meeting. Met ‘alleen vandaag’ toont de menubalk niets als die meeting niet vandaag is (het menu zelf volgt nog steeds je dagvenster).",
                    "What appears next to the icon for the next meeting. With ‘only today’ the menu bar shows nothing if that meeting isn't today (the menu itself still follows your day window).", lang))
         }
 
@@ -225,7 +225,7 @@ struct SettingsView: View {
         } header: {
             Text(L("Wat tonen", "What to show", lang))
         } footer: {
-            Text(L("Het maximum telt alleen agenda-meetings — herinneringen worden altijd getoond.",
+            subtleFooter(L("Het maximum telt alleen agenda-meetings — herinneringen worden altijd getoond.",
                    "The maximum counts calendar meetings only — reminders are always shown.", lang))
         }
 
@@ -252,7 +252,7 @@ struct SettingsView: View {
         } header: {
             Text(L("Markering", "Highlight", lang))
         } footer: {
-            Text(L("Kleurt de achtergrond achter het menubalk-icoon zodra de eerstvolgende meeting binnen de ingestelde tijd valt. Bij ‘agenda-kleur’ wordt de achtergrond wit als er meerdere meetings tegelijk uit verschillende agenda’s zijn.",
+            subtleFooter(L("Kleurt de achtergrond achter het menubalk-icoon zodra de eerstvolgende meeting binnen de ingestelde tijd valt. Bij ‘agenda-kleur’ wordt de achtergrond wit als er meerdere meetings tegelijk uit verschillende agenda’s zijn.",
                    "Colours the background behind the menu bar icon once the next meeting is within the set time. With ‘calendar colour’ the background turns white when several meetings start at once from different calendars.", lang))
         }
     }
@@ -299,7 +299,7 @@ struct SettingsView: View {
                     Label(L("Regel toevoegen", "Add rule", lang), systemImage: "plus")
                 }
             } footer: {
-                Text(L("Gebruik de ▲▼-knoppen om regels te ordenen.", "Use the ▲▼ buttons to reorder rules.", lang))
+                subtleFooter(L("Gebruik de ▲▼-knoppen om regels te ordenen.", "Use the ▲▼ buttons to reorder rules.", lang))
             }
         }
         .formStyle(.grouped)
@@ -461,7 +461,7 @@ struct SettingsView: View {
             } header: {
                 Text(L("Weergave van herinneringen", "Reminder display", lang))
             } footer: {
-                Text(L("Geldt voor alle herinneringen. Met 0 min verschijnt de waarschuwing op het tijdstip zelf.",
+                subtleFooter(L("Geldt voor alle herinneringen. Met 0 min verschijnt de waarschuwing op het tijdstip zelf.",
                        "Applies to all reminders. With 0 min the alert appears at the time itself.", lang))
             }
 
@@ -482,7 +482,7 @@ struct SettingsView: View {
             } header: {
                 Text(L("Herinneringen", "Reminders", lang))
             } footer: {
-                Text(L("Toevoegen doe je via het Bonk-menu (‘Herinnering toevoegen…’). Klik een herinnering om te bewerken.",
+                subtleFooter(L("Toevoegen doe je via het Bonk-menu (‘Herinnering toevoegen…’). Klik een herinnering om te bewerken.",
                        "Add via the Bonk menu (‘Add reminder…’). Click a reminder to edit.", lang))
             }
         }
@@ -579,7 +579,7 @@ struct SettingsView: View {
         } header: {
             Text(L("Welke agenda's volgen?", "Which calendars to follow?", lang))
         } footer: {
-            Text(L("Niets aangevinkt = geen agenda-meetings. De kleur bepaalt de markering in het menu.",
+            subtleFooter(L("Niets aangevinkt = geen agenda-meetings. De kleur bepaalt de markering in het menu.",
                    "Nothing checked = no calendar meetings. The colour sets the marker in the menu.", lang))
         }
     }
@@ -667,7 +667,7 @@ private struct AppearanceTab: View {
                     Label(L("Weergave toevoegen", "Add appearance", lang), systemImage: "plus")
                 }
             } footer: {
-                Text(L("Maak meerdere weergaven en kies er per schermvullende regel één — bijv. een rustige blur voor 1-op-1's en een felle gradient voor all-hands.",
+                subtleFooter(L("Maak meerdere weergaven en kies er per schermvullende regel één — bijv. een rustige blur voor 1-op-1's en een felle gradient voor all-hands.",
                        "Create multiple appearances and pick one per full-screen rule — e.g. a calm blur for 1-on-1s and a bold gradient for all-hands.", lang))
             }
         }
@@ -802,7 +802,7 @@ private struct AppearanceEditorView: View {
                 } header: {
                     Text(L("Tonen op het scherm", "Show on screen", lang))
                 } footer: {
-                    Text(L("De titel van de meeting wordt altijd getoond.", "The meeting title is always shown.", lang))
+                    subtleFooter(L("De titel van de meeting wordt altijd getoond.", "The meeting title is always shown.", lang))
                 }
             }
             .formStyle(.grouped)
@@ -948,10 +948,10 @@ private struct RuleEditorView: View {
                     Text(L("Actie", "Action", lang))
                 } footer: {
                     if draft.alertStyle == .ignore {
-                        Text(L("Meetings die op deze regel passen worden automatisch genegeerd (geen waarschuwing).",
+                        subtleFooter(L("Meetings die op deze regel passen worden automatisch genegeerd (geen waarschuwing).",
                                "Meetings matching this rule are automatically ignored (no alert).", lang))
                     } else if draft.alertStyle == .fullScreen && draft.notifyWhenLocked {
-                        Text(L("Bij een vergrendeld scherm zie je het overlay niet; Bonk stuurt dan een notificatie met dit geluid. Of de notificatie op het vergrendelscherm verschijnt hangt af van Systeeminstellingen → Notificaties → Bonk.",
+                        subtleFooter(L("Bij een vergrendeld scherm zie je het overlay niet; Bonk stuurt dan een notificatie met dit geluid. Of de notificatie op het vergrendelscherm verschijnt hangt af van Systeeminstellingen → Notificaties → Bonk.",
                                "While the screen is locked you won't see the overlay; Bonk sends a notification with this sound instead. Whether it appears on the lock screen depends on System Settings → Notifications → Bonk.", lang))
                     }
                 }
@@ -1019,7 +1019,7 @@ private struct RuleEditorView: View {
                 } header: {
                     Text(L("Filter", "Filter", lang))
                 } footer: {
-                    Text(L("Alleen gevolgde agenda's staan hierboven. Een agenda inlezen doe je bij Instellingen → Agenda's.",
+                    subtleFooter(L("Alleen gevolgde agenda's staan hierboven. Een agenda inlezen doe je bij Instellingen → Agenda's.",
                            "Only followed calendars appear above. To make Bonk read a calendar, enable it in Settings → Calendars.", lang))
                 }
             }
@@ -1119,7 +1119,7 @@ struct ReminderEditorView: View {
                 } header: {
                     Text(L("Wanneer", "When", lang))
                 } footer: {
-                    Text(whenFooter)
+                    subtleFooter(whenFooter)
                 }
             }
             .formStyle(.grouped)
@@ -1272,6 +1272,17 @@ struct SoundPicker: View {
         AlertSound.removeCustom(toRemove)
         customs = AlertSound.customSounds()
     }
+}
+
+/// Subtiele, links uitgelijnde sectie-footer. macOS 26 rendert grouped-Form
+/// footers standaard prominent (groot/gecentreerd); dit zet ze terug naar de
+/// vertrouwde rustige stijl.
+fileprivate func subtleFooter(_ text: String) -> some View {
+    Text(text)
+        .font(.footnote)
+        .foregroundStyle(.secondary)
+        .multilineTextAlignment(.leading)
+        .frame(maxWidth: .infinity, alignment: .leading)
 }
 
 private struct DayChip: View {
