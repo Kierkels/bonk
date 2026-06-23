@@ -11,6 +11,13 @@ struct MenuView: View {
     private let accent = Color(hex: "#7C3AED")
     private var lang: Lang { store.lang }
 
+    /// Gemeten ideale hoogte van de scrollbare lijst — zodat het venster nog steeds
+    /// krimpt bij weinig meetings, maar capt (en scrollt) bij een lange lijst.
+    @State private var listContentHeight: CGFloat = 0
+
+    /// Meetings/herinneringen waarvan de kaart is uitgeklapt (toont de beschrijving).
+    @State private var expandedIDs: Set<String> = []
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             header
@@ -21,47 +28,25 @@ struct MenuView: View {
 
             Divider()
 
-            if !calendar.authorized {
-                Button {
-                    Task { await calendar.requestAccess() }
-                } label: {
-                    Label(L("Agendatoegang geven", "Grant calendar access", lang), systemImage: "lock.open")
+            // Alleen de (variabele) meetinglijst scrollt; header en voettekst (met
+            // o.a. Instellingen) blijven altijd zichtbaar — ook bij een lange lijst.
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    listContent
                 }
-            } else {
-                if !app.upcoming.isEmpty {
-                    let primary = primaryMeetings
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text(headerText(for: primary))
-                            .font(.caption2.weight(.bold)).tracking(0.6)
-                            .foregroundStyle(.secondary)
-                        ForEach(primary) { nextMeetingCard($0) }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    GeometryReader { geo in
+                        Color.clear.preference(key: ListHeightKey.self, value: geo.size.height)
                     }
-                    if !laterMeetings.isEmpty {
-                        laterSection
-                    }
-                } else if app.skipped.isEmpty {
-                    emptyState
-                }
-
-                if !app.skipped.isEmpty {
-                    skippedSection
-                }
+                )
             }
+            .frame(height: min(listContentHeight, maxListHeight))
+            .onPreferenceChange(ListHeightKey.self) { listContentHeight = $0 }
 
             Divider()
 
-            Button {
-                app.openReminderEditor()
-            } label: {
-                Label(L("Herinnering toevoegen…", "Add reminder…", lang), systemImage: "alarm")
-            }
-
-            Button { openSettingsReliably() } label: {
-                Label(L("Instellingen…", "Settings…", lang), systemImage: "gearshape")
-            }
-            Button(role: .destructive) { NSApp.terminate(nil) } label: {
-                Label(L("Bonk afsluiten", "Quit Bonk", lang), systemImage: "power")
-            }
+            footer
         }
         .buttonStyle(.plain)
         .padding(14)
@@ -76,19 +61,82 @@ struct MenuView: View {
         .id(layoutKey)
     }
 
+    /// Maximale hoogte voor de scrollbare lijst: het zichtbare scherm minus ruimte
+    /// voor menubalk, header, voettekst en marges. Daarboven gaat de lijst scrollen.
+    private var maxListHeight: CGFloat {
+        let screen = NSScreen.main?.visibleFrame.height ?? 800
+        return max(220, screen - 260)
+    }
+
+    /// De variabele inhoud (meetings / lege staat / genegeerd) die mag scrollen.
+    @ViewBuilder private var listContent: some View {
+        if !calendar.authorized {
+            Button {
+                Task { await calendar.requestAccess() }
+            } label: {
+                Label(L("Agendatoegang geven", "Grant calendar access", lang), systemImage: "lock.open")
+            }
+        } else {
+            if !app.upcoming.isEmpty {
+                let primary = primaryMeetings
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(headerText(for: primary))
+                        .font(.caption2.weight(.bold)).tracking(0.6)
+                        .foregroundStyle(.secondary)
+                    ForEach(primary) { nextMeetingCard($0) }
+                }
+                if !laterMeetings.isEmpty {
+                    laterSection
+                }
+            } else if app.skipped.isEmpty {
+                emptyState
+            }
+
+            if !app.skipped.isEmpty {
+                skippedSection
+            }
+        }
+    }
+
+    private var footer: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Button {
+                app.openReminderEditor()
+            } label: {
+                Label(L("Herinnering toevoegen…", "Add reminder…", lang), systemImage: "alarm")
+            }
+
+            Button { openSettingsReliably() } label: {
+                Label(L("Instellingen…", "Settings…", lang), systemImage: "gearshape")
+            }
+            Button(role: .destructive) { NSApp.terminate(nil) } label: {
+                Label(L("Bonk afsluiten", "Quit Bonk", lang), systemImage: "power")
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
     /// Verandert zodra de inhoud van hoogte kan wijzigen, zodat het popover-venster
     /// opnieuw wordt opgemeten (zie `.id` hierboven).
     private var layoutKey: String {
-        "\(calendar.authorized)|\(app.upcoming.count)|\(app.skipped.count)|\(groupedByDay(laterMeetings).count)|\(updates.availableVersion != nil)"
+        "\(calendar.authorized)|\(app.upcoming.count)|\(app.skipped.count)|\(groupedByDay(laterMeetings).count)|\(updates.availableVersion != nil)|\(expandedIDs.sorted().joined(separator: ","))"
     }
 
     // MARK: Onderdelen
 
     private var header: some View {
-        HStack {
+        HStack(spacing: 10) {
             Image(systemName: "bell.badge.fill").foregroundStyle(accent)
             Text("Bonk").font(.headline)
             Spacer()
+            // Altijd bereikbaar tandwiel — ook als de meetinglijst lang is.
+            Button { openSettingsReliably() } label: {
+                Image(systemName: "gearshape.fill")
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+            .help(L("Instellingen…", "Settings…", lang))
             Toggle("", isOn: $store.settings.globalEnabled)
                 .toggleStyle(.switch)
                 .labelsHidden()
@@ -173,7 +221,14 @@ struct MenuView: View {
                 RoundedRectangle(cornerRadius: 2).fill(calendarColor(event.calendarID))
                     .frame(width: 3)
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(event.title).font(.headline).lineLimit(2)
+                    HStack(spacing: 6) {
+                        Text(event.title).font(.headline).lineLimit(2)
+                        if hasDescription(event) {
+                            Image(systemName: expandedIDs.contains(event.id) ? "chevron.up" : "chevron.down")
+                                .font(.caption2.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                        }
+                    }
                     Text(timeRange(event)).font(.subheadline).foregroundStyle(.secondary)
                 }
                 Spacer(minLength: 0)
@@ -203,10 +258,14 @@ struct MenuView: View {
             // Live aftelteller (getint: zacht vlak + gekleurde tekst)
             TimelineView(.periodic(from: .now, by: 1)) { context in
                 let remaining = event.start.timeIntervalSince(context.date)
-                let color = urgencyColor(remaining)
+                // Een meeting (met duur) die loopt → "Bezig" (rustig groen). Een
+                // momentpunt zoals een herinnering, of iets voorbij z'n tijd → negatief.
+                let inProgress = event.end > event.start
+                    && context.date >= event.start && context.date < event.end
+                let color = inProgress ? .green : urgencyColor(remaining)
                 HStack(spacing: 5) {
                     Image(systemName: remaining <= 0 ? "record.circle" : "timer")
-                    Text(countdown(remaining))
+                    Text(inProgress ? L("Bezig", "In progress", lang) : countdown(remaining))
                 }
                 .font(.callout.weight(.semibold).monospacedDigit())
                 .foregroundStyle(color)
@@ -230,6 +289,17 @@ struct MenuView: View {
                 }
             }
 
+            // Uitgeklapte beschrijving.
+            if expandedIDs.contains(event.id), let desc = descriptionText(event) {
+                Divider().opacity(0.5)
+                Text(desc)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
             if let url = event.joinURL {
                 Button {
                     NSWorkspace.shared.open(url)
@@ -247,6 +317,10 @@ struct MenuView: View {
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 12))
+        // Hele kaart klikbaar om uit/in te klappen; de knoppen (Joinen, bewerken,
+        // sluiten) vangen hun eigen taps en blijven gewoon werken.
+        .contentShape(Rectangle())
+        .onTapGesture { if hasDescription(event) { toggleExpanded(event.id) } }
     }
 
     private var laterSection: some View {
@@ -284,38 +358,54 @@ struct MenuView: View {
     }
 
     @ViewBuilder private func laterRow(_ event: UpcomingEvent) -> some View {
-        HStack(spacing: 10) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(event.title).font(.callout).lineLimit(1)
-                HStack(spacing: 5) {
-                    Text(clockTime(event))
-                    if let room = roomText(event) {
-                        Text("· \(room)").lineLimit(1)
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 10) {
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 5) {
+                        Text(event.title).font(.callout).lineLimit(1)
+                        if hasDescription(event) {
+                            Image(systemName: expandedIDs.contains(event.id) ? "chevron.up" : "chevron.down")
+                                .font(.caption2.weight(.semibold)).foregroundStyle(.secondary)
+                        }
                     }
+                    HStack(spacing: 5) {
+                        Text(clockTime(event))
+                        if let room = roomText(event) {
+                            Text("· \(room)").lineLimit(1)
+                        }
+                    }
+                    .font(.caption2).foregroundStyle(.secondary)
                 }
-                .font(.caption2).foregroundStyle(.secondary)
-            }
-            Spacer(minLength: 0)
-            if event.joinURL != nil {
-                Image(systemName: "video.fill").font(.caption2).foregroundStyle(.secondary)
-            }
-            if event.id.hasPrefix("reminder:") {
+                Spacer(minLength: 0)
+                if event.joinURL != nil {
+                    Image(systemName: "video.fill").font(.caption2).foregroundStyle(.secondary)
+                }
+                if event.id.hasPrefix("reminder:") {
+                    Button {
+                        app.editReminder(id: event.id)
+                    } label: {
+                        Image(systemName: "pencil").font(.callout).foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .help(L("Herinnering bewerken", "Edit reminder", lang))
+                }
                 Button {
-                    app.editReminder(id: event.id)
+                    app.skipMeeting(id: event.id)
                 } label: {
-                    Image(systemName: "pencil").font(.callout).foregroundStyle(.secondary)
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.callout).foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
-                .help(L("Herinnering bewerken", "Edit reminder", lang))
+                .help(reminderOrMeetingIgnoreHelp(event))
             }
-            Button {
-                app.skipMeeting(id: event.id)
-            } label: {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.callout).foregroundStyle(.secondary)
+
+            if expandedIDs.contains(event.id), let desc = descriptionText(event) {
+                Text(desc)
+                    .font(.caption).foregroundStyle(.secondary)
+                    .textSelection(.enabled)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .buttonStyle(.plain)
-            .help(reminderOrMeetingIgnoreHelp(event))
         }
         // Agenda-kleurstreepje als leading overlay i.p.v. een greedy HStack-sibling:
         // zo matcht het de rijhoogte en wordt het niet gecomprimeerd bij weinig ruimte.
@@ -326,6 +416,7 @@ struct MenuView: View {
         }
         .padding(.vertical, 7)
         .contentShape(Rectangle())
+        .onTapGesture { if hasDescription(event) { toggleExpanded(event.id) } }
     }
 
     /// Groepeert (op starttijd gesorteerde) events per kalenderdag, volgorde behouden.
@@ -415,6 +506,21 @@ struct MenuView: View {
         return df.string(from: event.start)
     }
 
+    /// De (opgeschoonde) beschrijving van een event, of nil als er geen is.
+    private func descriptionText(_ event: UpcomingEvent) -> String? {
+        guard let notes = event.notes?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !notes.isEmpty else { return nil }
+        return notes
+    }
+
+    private func hasDescription(_ event: UpcomingEvent) -> Bool {
+        descriptionText(event) != nil
+    }
+
+    private func toggleExpanded(_ id: String) {
+        if expandedIDs.contains(id) { expandedIDs.remove(id) } else { expandedIDs.insert(id) }
+    }
+
     private func reminderOrMeetingIgnoreHelp(_ event: UpcomingEvent) -> String {
         event.id.hasPrefix("reminder:")
             ? L("Herinnering verwijderen", "Delete reminder", lang)
@@ -469,7 +575,15 @@ struct MenuView: View {
     }
 
     private func countdown(_ seconds: TimeInterval) -> String {
-        if seconds <= 0 { return L("Bezig", "In progress", lang) }
+        // Voorbij de starttijd: negatief doortellen ("al begonnen / X geleden").
+        if seconds <= 0 {
+            let elapsed = Int((-seconds).rounded())
+            let h = elapsed / 3600, m = (elapsed % 3600) / 60, s = elapsed % 60
+            if h >= 1 { return L("\(h)u \(m)m geleden", "\(h)h \(m)m ago", lang) }
+            if elapsed >= 600 { return L("\(m) min geleden", "\(m) min ago", lang) }
+            if m >= 1 { return L("\(m) min \(s) sec geleden", "\(m) min \(s) sec ago", lang) }
+            return L("\(s) sec geleden", "\(s) sec ago", lang)
+        }
         let total = Int(seconds.rounded())
         let h = total / 3600, m = (total % 3600) / 60, s = total % 60
         if h >= 1 { return L("over \(h)u \(m)m", "in \(h)h \(m)m", lang) }
@@ -479,7 +593,7 @@ struct MenuView: View {
     }
 
     private func urgencyColor(_ seconds: TimeInterval) -> Color {
-        if seconds <= 0 { return .green }      // bezig
+        if seconds <= 0 { return .red }        // al begonnen / overtijd
         if seconds <= 120 { return .red }
         if seconds <= 300 { return .orange }
         return .secondary                       // normaal: rustig grijs
@@ -500,5 +614,13 @@ struct MenuView: View {
                 }
             }
         }
+    }
+}
+
+/// Meet de ideale hoogte van de scrollbare meetinglijst.
+private struct ListHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
     }
 }

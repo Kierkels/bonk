@@ -60,8 +60,11 @@ enum MeetingEngine {
                               forceShown: Set<String>) -> Classification {
         let cal = classify(events: calendarEvents, now: now, rules: rules,
                            dismissed: dismissed, forceShown: forceShown)
-        let liveReminders = reminders.filter { $0.end > now }
-        let upcoming = (cal.upcoming + liveReminders).sorted { $0.start < $1.start }
+        // Herinneringen blijven zichtbaar, óók als hun (weergave)tijd al voorbij is:
+        // een herinnering staat alleen nog in de opslag als ze pending of gesnoozed
+        // is (bij het vuren wordt ze anders meteen geconsumeerd). De teller loopt dan
+        // negatief ("al begonnen").
+        let upcoming = (cal.upcoming + reminders).sorted { $0.start < $1.start }
         return Classification(upcoming: upcoming, skipped: cal.skipped)
     }
 
@@ -104,7 +107,12 @@ enum MeetingEngine {
                          alreadyFired: Bool) -> AlertDecision {
         if let snz = snoozeUntil {
             if now < snz { return .stillSnoozed }
-            return .snoozeEnded(fire: e.end > now)
+            // Vuur als de meeting nog loopt, of — voor een momentpunt zoals een
+            // herinnering (end == start) — altijd zodra de snooze afloopt. Een
+            // gesnoozede herinnering mag nooit stilletjes vervallen omdat de tick
+            // net te laat komt; "snooze tot het begint" moet 'm gegarandeerd tonen.
+            let stillRelevant = e.end > now || e.end <= e.start
+            return .snoozeEnded(fire: stillRelevant)
         }
         let fireTime = e.start.addingTimeInterval(-Double(rule.leadMinutes) * 60)
         let grace = e.start.addingTimeInterval(120)

@@ -14,6 +14,7 @@ struct OverlayMeeting: Identifiable {
     let appearance: OverlayAppearance
     let onJoin: () -> Void
     let onSnooze: (Int) -> Void
+    let onSnoozeUntilStart: () -> Void
     let onDismiss: () -> Void
 }
 
@@ -41,6 +42,7 @@ final class OverlayController {
               backdrops: [CGDirectDisplayID: NSImage] = [:],
               onJoin: @escaping () -> Void,
               onSnooze: @escaping (Int) -> Void,
+              onSnoozeUntilStart: @escaping () -> Void,
               onDismiss: @escaping () -> Void) {
         self.lang = lang
         guard !meetings.contains(where: { $0.id == event.id }) else { return }
@@ -53,6 +55,7 @@ final class OverlayController {
             appearance: appearance,
             onJoin: { [weak self] in onJoin(); self?.remove(id) },
             onSnooze: { [weak self] mins in onSnooze(mins); self?.remove(id) },
+            onSnoozeUntilStart: { [weak self] in onSnoozeUntilStart(); self?.remove(id) },
             onDismiss: { [weak self] in onDismiss(); self?.remove(id) }
         ))
         startObservingIfNeeded()

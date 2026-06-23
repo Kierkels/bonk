@@ -440,18 +440,7 @@ struct SettingsView: View {
                     }
                 }
 
-                HStack {
-                    Picker(L("Geluid", "Sound", lang), selection: $store.settings.reminderSound) {
-                        ForEach(AlertSound.allChoices, id: \.self) { choice in
-                            Text(AlertSound.label(choice, lang)).tag(choice)
-                        }
-                    }
-                    Button { AlertSound.preview(store.settings.reminderSound) } label: {
-                        Image(systemName: "play.circle")
-                    }
-                    .buttonStyle(.borderless)
-                    .help(L("Geluid afspelen", "Play sound", lang))
-                }
+                SoundPicker(choice: $store.settings.reminderSound, lang: lang)
 
                 if store.settings.reminderSound != AlertSound.noneChoice {
                     if store.settings.reminderAlertStyle == .fullScreen {
@@ -505,18 +494,50 @@ struct SettingsView: View {
             Image(systemName: "alarm").font(.title3).foregroundStyle(Color.accentColor).frame(width: 26)
             VStack(alignment: .leading, spacing: 2) {
                 Text(reminder.title.isEmpty ? L("Herinnering", "Reminder", lang) : reminder.title).fontWeight(.medium)
-                Text(reminderDateText(reminder.date)).font(.caption).foregroundStyle(.secondary)
+                Text(reminderScheduleText(reminder)).font(.caption).foregroundStyle(.secondary)
             }
             Spacer()
+            if reminder.isRepeating {
+                Image(systemName: "repeat").font(.caption).foregroundStyle(.tertiary)
+            }
             Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
         }
         .padding(.vertical, 2)
     }
 
-    private func reminderDateText(_ date: Date) -> String {
-        let f = DateFormatter()
-        f.dateFormat = "HH:mm"
-        return L("Vandaag · \(f.string(from: date))", "Today · \(f.string(from: date))", lang)
+    /// Beschrijft wanneer een herinnering vuurt: losse datum of herhaalregel.
+    private func reminderScheduleText(_ reminder: CustomReminder) -> String {
+        let tf = DateFormatter(); tf.dateFormat = "HH:mm"
+        let time = tf.string(from: reminder.date)
+        let cal = Calendar.current
+
+        switch reminder.repeatRule {
+        case .daily:
+            return L("Elke dag · \(time)", "Every day · \(time)", lang)
+        case .weekdays:
+            return L("Werkdagen · \(time)", "Weekdays · \(time)", lang)
+        case .weekly:
+            let order = [2, 3, 4, 5, 6, 7, 1]
+            let labels = lang == .en
+                ? ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+                : ["ma", "di", "wo", "do", "vr", "za", "zo"]
+            let days = order.enumerated()
+                .filter { reminder.activeWeekdays().contains($0.element) }
+                .map { labels[$0.offset] }
+                .joined(separator: ", ")
+            return "\(days) · \(time)"
+        case .none:
+            let day: String
+            if cal.isDateInToday(reminder.date) { day = L("Vandaag", "Today", lang) }
+            else if cal.isDateInTomorrow(reminder.date) { day = L("Morgen", "Tomorrow", lang) }
+            else {
+                let df = DateFormatter()
+                df.locale = Locale(identifier: lang == .en ? "en_US" : "nl_NL")
+                df.dateFormat = "EEE d MMM"
+                day = df.string(from: reminder.date)
+            }
+            return "\(day) · \(time)"
+        }
     }
 
     // MARK: Agenda's
@@ -904,20 +925,7 @@ private struct RuleEditorView: View {
                         Toggle(L("Automatisch joinen op starttijd", "Auto-join at start time", lang), isOn: $draft.autoJoin)
 
                         // Geluid bij deze waarschuwing (notificatie én schermvullend).
-                        HStack {
-                            Picker(L("Geluid", "Sound", lang), selection: $draft.notificationSound) {
-                                ForEach(AlertSound.allChoices, id: \.self) { choice in
-                                    Text(AlertSound.label(choice, lang)).tag(choice)
-                                }
-                            }
-                            Button {
-                                AlertSound.preview(draft.notificationSound)
-                            } label: {
-                                Image(systemName: "play.circle")
-                            }
-                            .buttonStyle(.borderless)
-                            .help(L("Geluid afspelen", "Play sound", lang))
-                        }
+                        SoundPicker(choice: $draft.notificationSound, lang: lang)
 
                         if draft.notificationSound != AlertSound.noneChoice {
                             if draft.alertStyle == .fullScreen {
@@ -1085,12 +1093,33 @@ struct ReminderEditorView: View {
                     }
                 }
                 Section {
+                    Picker(L("Herhalen", "Repeat", lang), selection: $draft.repeatRule) {
+                        Text(L("Geen", "None", lang)).tag(ReminderRepeat.none)
+                        Text(L("Elke dag", "Every day", lang)).tag(ReminderRepeat.daily)
+                        Text(L("Werkdagen (ma–vr)", "Weekdays (Mon–Fri)", lang)).tag(ReminderRepeat.weekdays)
+                        Text(L("Wekelijks", "Weekly", lang)).tag(ReminderRepeat.weekly)
+                    }
+                    .onChange(of: draft.repeatRule) { _, rule in
+                        // Bij wekelijks zonder keuze: start met de weekdag van de datum.
+                        if rule == .weekly && draft.weekdays.isEmpty {
+                            draft.weekdays = [Calendar.current.component(.weekday, from: draft.date)]
+                        }
+                    }
+
+                    if draft.repeatRule == .weekly {
+                        weekdayPicker
+                    }
+
+                    if draft.repeatRule == .none {
+                        DatePicker(L("Datum", "Date", lang), selection: $draft.date,
+                                   displayedComponents: [.date])
+                    }
                     DatePicker(L("Tijd", "Time", lang), selection: $draft.date,
                                displayedComponents: [.hourAndMinute])
                 } header: {
                     Text(L("Wanneer", "When", lang))
                 } footer: {
-                    Text(L("Herinneringen gelden voor vandaag.", "Reminders apply to today.", lang))
+                    Text(whenFooter)
                 }
             }
             .formStyle(.grouped)
@@ -1111,12 +1140,137 @@ struct ReminderEditorView: View {
             }
             .padding(12)
         }
-        .frame(width: 460, height: 380)
+        .frame(width: 460, height: 440)
         .preferredColorScheme(store.colorScheme)
+    }
+
+    /// Rij met weekdag-knoppen (ma … zo) voor een wekelijkse herhaling.
+    private var weekdayPicker: some View {
+        // Weergavevolgorde ma→zo; Calendar-weekdagnummers: zo=1 … za=7.
+        let order = [2, 3, 4, 5, 6, 7, 1]
+        let labels = lang == .en
+            ? ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+            : ["ma", "di", "wo", "do", "vr", "za", "zo"]
+        return HStack(spacing: 6) {
+            ForEach(Array(order.enumerated()), id: \.element) { index, weekday in
+                DayChip(label: labels[index], selected: draft.weekdays.contains(weekday)) {
+                    if draft.weekdays.contains(weekday) {
+                        // Laat minstens één dag aan staan.
+                        if draft.weekdays.count > 1 { draft.weekdays.remove(weekday) }
+                    } else {
+                        draft.weekdays.insert(weekday)
+                    }
+                }
+            }
+        }
+    }
+
+    /// Leesbare samenvatting onder de "Wanneer"-sectie.
+    private var whenFooter: String {
+        let f = DateFormatter(); f.dateFormat = "HH:mm"
+        let time = f.string(from: draft.date)
+        switch draft.repeatRule {
+        case .none:
+            return L("Eenmalig, op de gekozen datum en tijd.",
+                     "One-off, at the chosen date and time.", lang)
+        case .daily:
+            return L("Elke dag om \(time).", "Every day at \(time).", lang)
+        case .weekdays:
+            return L("Elke werkdag (ma–vr) om \(time).", "Every weekday (Mon–Fri) at \(time).", lang)
+        case .weekly:
+            let order = [2, 3, 4, 5, 6, 7, 1]
+            let labels = lang == .en
+                ? ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+                : ["ma", "di", "wo", "do", "vr", "za", "zo"]
+            let days = order.enumerated()
+                .filter { draft.weekdays.contains($0.element) }
+                .map { labels[$0.offset] }
+                .joined(separator: ", ")
+            return L("Wekelijks op \(days) om \(time).", "Weekly on \(days) at \(time).", lang)
+        }
     }
 
     private func save() {
         if isExisting { store.updateReminder(draft) } else { store.addReminder(draft) }
+    }
+}
+
+/// Geluidskiezer: standaard + systeemgeluiden + eigen geïmporteerde bestanden,
+/// met een afspeel-knop en een knop om een eigen geluid te kiezen.
+struct SoundPicker: View {
+    @Binding var choice: String
+    let lang: Lang
+    @State private var customs: [String] = AlertSound.customSounds()
+    @State private var isPlaying = false
+
+    var body: some View {
+        HStack {
+            Picker(L("Geluid", "Sound", lang), selection: $choice) {
+                Text(AlertSound.label(AlertSound.defaultChoice, lang)).tag(AlertSound.defaultChoice)
+                ForEach(AlertSound.systemNames, id: \.self) { name in
+                    Text(name).tag(name)
+                }
+                if !customs.isEmpty {
+                    Divider()
+                    ForEach(customs, id: \.self) { c in
+                        Text(AlertSound.label(c, lang)).tag(c)
+                    }
+                }
+                Divider()
+                Text(AlertSound.label(AlertSound.noneChoice, lang)).tag(AlertSound.noneChoice)
+            }
+
+            Button {
+                if isPlaying {
+                    AlertSound.stop()
+                } else {
+                    isPlaying = true
+                    AlertSound.preview(choice) { isPlaying = false }
+                }
+            } label: {
+                Image(systemName: isPlaying ? "stop.circle" : "play.circle")
+            }
+            .buttonStyle(.borderless)
+            .help(isPlaying ? L("Stoppen", "Stop", lang) : L("Geluid afspelen", "Play sound", lang))
+            .disabled(choice == AlertSound.noneChoice)
+
+            if AlertSound.isCustom(choice) {
+                Button(role: .destructive) { removeSelectedCustom() } label: {
+                    Image(systemName: "trash")
+                }
+                .buttonStyle(.borderless)
+                .help(L("Dit eigen geluid verwijderen", "Remove this custom sound", lang))
+            }
+
+            Button { importSound() } label: {
+                Image(systemName: "plus.circle")
+            }
+            .buttonStyle(.borderless)
+            .help(L("Eigen geluid toevoegen…", "Add custom sound…", lang))
+        }
+        .onAppear { customs = AlertSound.customSounds() }
+        .onDisappear { if isPlaying { AlertSound.stop() } }
+    }
+
+    private func importSound() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.audio]
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.prompt = L("Kiezen", "Choose", lang)
+        guard panel.runModal() == .OK, let url = panel.url,
+              let added = AlertSound.importSound(from: url) else { return }
+        customs = AlertSound.customSounds()
+        choice = added
+        isPlaying = true
+        AlertSound.preview(added) { isPlaying = false }
+    }
+
+    private func removeSelectedCustom() {
+        let toRemove = choice
+        choice = AlertSound.defaultChoice
+        AlertSound.removeCustom(toRemove)
+        customs = AlertSound.customSounds()
     }
 }
 

@@ -67,6 +67,16 @@ final class MeetingEngineTests: XCTestCase {
         XCTAssertFalse(c.skipped.contains { $0.id == "reminder:1" })   // herinnering nooit in "genegeerd"
     }
 
+    func testPastReminderStaysVisible() {
+        // Een gesnoozede herinnering heeft een weergavetijd in het verleden, maar moet
+        // zichtbaar blijven in de lijst (anders verdwijnt 'ie tijdens de snooze).
+        let past = makeEvent(id: "reminder:1", start: now.addingTimeInterval(-300),
+                             durationMin: 0, calendarID: "bonk.reminder")
+        let c = MeetingEngine.visibleEvents(calendarEvents: [], reminders: [past],
+                                            now: now, rules: [makeRule()], dismissed: [], forceShown: [])
+        XCTAssertTrue(c.upcoming.contains { $0.id == "reminder:1" })
+    }
+
     func testReminderRuleMapsGlobalSettings() {
         var s = AppSettings.default
         s.reminderAlertStyle = .banner
@@ -284,5 +294,39 @@ final class MeetingEngineTests: XCTestCase {
     func testSelectionFiltersToEnabled() {
         XCTAssertEqual(MeetingEngine.selectedCalendarIDs(available: ["A", "B", "C"], enabled: ["A", "C"]),
                        ["A", "C"])
+    }
+
+    // MARK: Snooze tot start
+
+    func testSnoozeUntilStartStillSnoozedBeforeStart() {
+        let meetingStart = now.addingTimeInterval(120)
+        let meeting = makeEvent(start: meetingStart)
+        let decision = MeetingEngine.decision(for: meeting, rule: makeRule(), now: now,
+                                              snoozeUntil: meetingStart, alreadyFired: true)
+        XCTAssertEqual(decision, .stillSnoozed)
+    }
+
+    func testSnoozeUntilStartFiresMeetingAtStart() {
+        let meeting = makeEvent(start: now, durationMin: 30)
+        let decision = MeetingEngine.decision(for: meeting, rule: makeRule(), now: now,
+                                              snoozeUntil: now, alreadyFired: true)
+        XCTAssertEqual(decision, .snoozeEnded(fire: true))
+    }
+
+    func testSnoozeUntilStartFiresReminderAtStartWithinGrace() {
+        // Momentpunt (reminder): end == start. Net na de start, binnen de grace → vuren.
+        let reminder = makeEvent(id: "reminder:abc", start: now.addingTimeInterval(-5), durationMin: 0)
+        let decision = MeetingEngine.decision(for: reminder, rule: makeRule(), now: now,
+                                              snoozeUntil: now.addingTimeInterval(-5), alreadyFired: true)
+        XCTAssertEqual(decision, .snoozeEnded(fire: true))
+    }
+
+    func testSnoozeUntilStartReminderStillFiresAfterGrace() {
+        // Een gesnoozede herinnering mag niet verdwijnen als de tick laat komt:
+        // ook ruim na de starttijd vuurt 'ie alsnog zodra de snooze afloopt.
+        let reminder = makeEvent(id: "reminder:abc", start: now.addingTimeInterval(-200), durationMin: 0)
+        let decision = MeetingEngine.decision(for: reminder, rule: makeRule(), now: now,
+                                              snoozeUntil: now.addingTimeInterval(-200), alreadyFired: true)
+        XCTAssertEqual(decision, .snoozeEnded(fire: true))
     }
 }

@@ -76,6 +76,11 @@ struct MeetingRowView: View {
     var lang: Lang = .nl
     private var event: UpcomingEvent { meeting.event }
     private var appearance: OverlayAppearance { meeting.appearance }
+    private var snoozeUntilStartLabel: String {
+        event.id.hasPrefix("reminder:")
+            ? L("Tot het ingestelde tijdstip", "Until the set time", lang)
+            : L("Tot de meeting begint", "Until the meeting starts", lang)
+    }
 
     var body: some View {
         HStack(spacing: 14) {
@@ -107,6 +112,10 @@ struct MeetingRowView: View {
                     Button(L("1 minuut", "1 minute", lang))   { meeting.onSnooze(1) }
                     Button(L("2 minuten", "2 minutes", lang)) { meeting.onSnooze(2) }
                     Button(L("5 minuten", "5 minutes", lang)) { meeting.onSnooze(5) }
+                    if event.start > Date() {
+                        Divider()
+                        Button(snoozeUntilStartLabel) { meeting.onSnoozeUntilStart() }
+                    }
                 } label: {
                     iconCircle("zzz")
                 }
@@ -171,6 +180,11 @@ struct MeetingCardView: View {
 
     private var event: UpcomingEvent { meeting.event }
     private var appearance: OverlayAppearance { meeting.appearance }
+    private var snoozeUntilStartLabel: String {
+        isReminder
+            ? L("Tot het ingestelde tijdstip", "Until the set time", lang)
+            : L("Tot de meeting begint", "Until the meeting starts", lang)
+    }
 
     var body: some View {
         VStack(spacing: large ? 24 : 12) {
@@ -276,6 +290,10 @@ struct MeetingCardView: View {
                 Button(L("1 minuut", "1 minute", lang))   { meeting.onSnooze(1) }
                 Button(L("2 minuten", "2 minutes", lang)) { meeting.onSnooze(2) }
                 Button(L("5 minuten", "5 minutes", lang)) { meeting.onSnooze(5) }
+                if event.start > Date() {
+                    Divider()
+                    Button(snoozeUntilStartLabel) { meeting.onSnoozeUntilStart() }
+                }
             } label: {
                 actionLabel(L("Snooze", "Snooze", lang), icon: "zzz", fill: .white.opacity(0.18))
             }

@@ -56,6 +56,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
         let simultaneous = upcoming.filter { abs($0.start.timeIntervalSince(n.start)) < 60 }.count
         let titlePart = simultaneous > 1 ? "\(simultaneous) meetings" : truncatedTitle(n.title)
 
+        // Eenmaal begonnen is een aftelling ("bezig") weinig zinvol → toon gewoon de
+        // titel, ongeacht de stijl, totdat de meeting/herinnering wordt gejoined,
+        // genegeerd of gesloten (dan valt 'ie uit `nextEvent`).
+        if n.start <= Date() { return titlePart }
+
         switch style {
         case .icon:           return nil
         case .countdown:      return cd
@@ -190,13 +195,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
             return
         }
         let now = Date()
+        let graceCutoff = now.addingTimeInterval(-120)
 
-        // Herinneringen gelden alleen voor vandaag — ruim oudere op.
+        // Herinneringen normaliseren:
+        //  - eenmalig & van een eerdere dag → opruimen;
+        //  - herhalend & ruim voorbij → naar het eerstvolgende vuurmoment schuiven
+        //    (binnen de grace blijft 'ie staan zodat de fire-loop hieronder 'm nog
+        //    kan tonen).
         let startOfToday = Calendar.current.startOfDay(for: now)
-        let liveReminders = settingsStore.settings.reminders.filter { $0.date >= startOfToday }
-        if liveReminders.count != settingsStore.settings.reminders.count {
-            settingsStore.settings.reminders = liveReminders
+        var normalized = settingsStore.settings.reminders
+        var normalizedChanged = false
+        normalized = normalized.compactMap { r -> CustomReminder? in
+            if r.isRepeating {
+                if r.date < graceCutoff, let next = r.nextOccurrence(onOrAfter: now), next != r.date {
+                    advanceFiredKeys(forReminder: r.id)
+                    normalizedChanged = true
+                    var c = r; c.date = next; return c
+                }
+                return r
+            } else {
+                let snoozedFuture = (snoozeUntil["reminder:\(r.id.uuidString)"] ?? .distantPast) > now
+                if !snoozedFuture, r.date < startOfToday { normalizedChanged = true; return nil }
+                return r
+            }
         }
+        if normalizedChanged { settingsStore.settings.reminders = normalized }
 
         // Agenda-meetings volgen de regels; herinneringen staan los daarvan en
         // volgen de globale herinnering-instellingen.
@@ -262,14 +285,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
             }
         }
 
-        // Een herinnering heeft geen duur: zodra getoond is hij weg (tenzij gesnoozed,
-        // dan is hij al verzet). Gemiste herinneringen (app stond uit) ruimen we ook op.
-        let graceCutoff = now.addingTimeInterval(-120)
-        var remainingReminders = settingsStore.settings.reminders
-        remainingReminders.removeAll { shownReminderIDs.contains($0.id) || $0.date < graceCutoff }
-        if remainingReminders.count != settingsStore.settings.reminders.count {
-            settingsStore.settings.reminders = remainingReminders
+        // Een eenmalige herinnering heeft geen duur: zodra getoond (of gemist omdat
+        // de app uitstond) is hij weg. Een herhalende herinnering verzetten we naar
+        // het eerstvolgende vuurmoment i.p.v. te verwijderen.
+        var updatedReminders = settingsStore.settings.reminders
+        var remindersChanged = false
+        updatedReminders = updatedReminders.compactMap { r -> CustomReminder? in
+            let snoozedFuture = (snoozeUntil["reminder:\(r.id.uuidString)"] ?? .distantPast) > now
+            let fired = shownReminderIDs.contains(r.id)
+            // Een gesnoozede herinnering nooit als "gemist" opruimen — ze wacht op
+            // haar snooze-moment, ook al ligt de weergavetijd al in het verleden.
+            let missed = !snoozedFuture && r.date < graceCutoff
+            guard fired || missed else { return r }
+            if r.isRepeating {
+                // Na het vuren net iets voorbij 'now' zoeken zodat we niet hetzelfde
+                // moment opnieuw pakken.
+                let from = fired ? now.addingTimeInterval(1) : now
+                guard let next = r.nextOccurrence(onOrAfter: from), next != r.date else { return r }
+                advanceFiredKeys(forReminder: r.id)
+                remindersChanged = true
+                var c = r; c.date = next; return c
+            } else {
+                remindersChanged = true
+                return nil
+            }
         }
+        if remindersChanged { settingsStore.settings.reminders = updatedReminders }
 
         if firedKeys.count > 300 { firedKeys.removeAll() }
 
@@ -352,6 +393,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
                 backdrops: backs,
                 onJoin: { AlertSound.stop(); if let u = event.joinURL { NSWorkspace.shared.open(u) } },
                 onSnooze: { [weak self] mins in AlertSound.stop(); self?.snooze(event: event, minutes: mins) },
+                onSnoozeUntilStart: { [weak self] in AlertSound.stop(); self?.snoozeUntilStart(event: event) },
                 // Herinnering: "Sluiten" sluit alleen het overlay (de herinnering blijft
                 // staan en wordt niet genegeerd/verwijderd). Meeting: "Negeren".
                 onDismiss: { [weak self] in
@@ -378,7 +420,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
 
     private func reminderEvents(now: Date) -> [UpcomingEvent] {
         let cal = Calendar.current
-        let horizon = now.addingTimeInterval(48 * 3600)
+        // Zelfde horizon als de agenda-meetings, zodat herinneringen verder vooruit
+        // (incl. wekelijkse) net zo goed in het venster passen.
+        let horizon = now.addingTimeInterval(Double(fetchHorizonHours(now: now)) * 3600)
         return settingsStore.settings.reminders.compactMap { reminder -> UpcomingEvent? in
             guard reminder.date < horizon else { return nil }
             let title = reminder.title.trimmingCharacters(in: .whitespaces)
@@ -453,24 +497,57 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
         tick()
     }
 
+    /// Verwijdert de "al gevuurd"-markeringen van een herinnering, zodat een
+    /// verzette/herhalende herinnering op z'n nieuwe tijdstip opnieuw kan vuren.
+    private func advanceFiredKeys(forReminder id: UUID) {
+        let prefix = "reminder:\(id.uuidString)|"
+        firedKeys = firedKeys.filter { !$0.hasPrefix(prefix) }
+    }
+
     private func snooze(event: UpcomingEvent, minutes: Int) {
         let newDate = Date().addingTimeInterval(Double(minutes) * 60)
         firedKeys = firedKeys.filter { !$0.hasPrefix(event.id + "|") }
 
-        // Herinnering: snoozen = verzetten (hij is bij vuren al verwijderd, dus
-        // we plannen 'm opnieuw in op het nieuwe tijdstip). Meeting: gewone snooze.
+        // Herinnering: snoozen verzet NIET de weergavetijd — die blijft op het
+        // ingestelde tijdstip staan (de teller loopt daarna negatief, "al begonnen").
+        // Alleen `snoozeUntil` bepaalt wanneer de melding terugkomt; de globale
+        // lead-tijd wordt daarbij bewust genegeerd. De herinnering wordt zo nodig
+        // opnieuw ingepland (ze is bij het vuren mogelijk al verwijderd) zodat ze
+        // blijft bestaan tot je ze écht sluit.
         if let uuid = MeetingEngine.reminderUUID(fromEventID: event.id) {
-            let reminder = CustomReminder(id: uuid, title: event.title,
-                                          notes: event.notes ?? "", date: newDate)
-            if settingsStore.settings.reminders.contains(where: { $0.id == uuid }) {
-                settingsStore.updateReminder(reminder)
-            } else {
-                settingsStore.addReminder(reminder)
+            if !settingsStore.settings.reminders.contains(where: { $0.id == uuid }) {
+                settingsStore.addReminder(CustomReminder(id: uuid, title: event.title,
+                                                         notes: event.notes ?? "", date: event.start))
             }
+            snoozeUntil[event.id] = newDate
             tick()
             return
         }
         snoozeUntil[event.id] = newDate
+    }
+
+    /// Snooze tot de starttijd: de waarschuwing komt opnieuw zodra de
+    /// meeting/herinnering begint. Alleen zinvol als de waarschuwing vóór de start
+    /// werd getoond — anders is `event.start` al voorbij en gebeurt er niets.
+    private func snoozeUntilStart(event: UpcomingEvent) {
+        firedKeys = firedKeys.filter { !$0.hasPrefix(event.id + "|") }
+
+        // Een herinnering is bij het vuren mogelijk al uit de opslag verwijderd
+        // (eenmalig) of doorgeschoven (herhalend) → plan 'm opnieuw op de starttijd.
+        // `snoozeUntil` onderdrukt daarbij een eventuele vroege lead-waarschuwing,
+        // zodat de melding precies op het ingestelde tijdstip terugkomt.
+        if let uuid = MeetingEngine.reminderUUID(fromEventID: event.id) {
+            if var existing = settingsStore.settings.reminders.first(where: { $0.id == uuid }) {
+                existing.date = event.start
+                settingsStore.updateReminder(existing)
+            } else {
+                settingsStore.addReminder(CustomReminder(id: uuid, title: event.title,
+                                                         notes: event.notes ?? "", date: event.start))
+            }
+        }
+
+        snoozeUntil[event.id] = event.start
+        tick()
     }
 
     private var reminderWindow: NSWindow?
@@ -498,7 +575,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
             self?.reminderWindow = nil
         }
         let win = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 460, height: 380),
+            contentRect: NSRect(x: 0, y: 0, width: 460, height: 440),
             styleMask: [.titled, .closable],
             backing: .buffered, defer: false
         )
