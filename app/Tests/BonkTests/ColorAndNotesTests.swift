@@ -1,5 +1,6 @@
 import XCTest
 import SwiftUI
+import EventKit
 @testable import Bonk
 
 final class ColorHelperTests: XCTestCase {
@@ -31,5 +32,28 @@ final class CleanNotesTests: XCTestCase {
     func testEmptyBecomesNil() {
         XCTAssertNil(CalendarManager.cleanNotes("   \n  "))
         XCTAssertNil(CalendarManager.cleanNotes(nil))
+    }
+}
+
+final class CalendarItemURLTests: XCTestCase {
+
+    func testPrefersHTTPSWebLink() {
+        let ev = EKEvent(eventStore: EKEventStore())
+        ev.url = URL(string: "https://www.google.com/calendar/event?eid=abc123")
+        XCTAssertEqual(CalendarManager.calendarItemURL(ev)?.absoluteString,
+                       "https://www.google.com/calendar/event?eid=abc123")
+    }
+
+    func testIgnoresNonHTTPURLAndFallsBack() {
+        // Een niet-http(s) URL telt niet als web-link; zonder opgeslagen
+        // eventIdentifier (in-memory event) is er geen ical-fallback → nil.
+        let ev = EKEvent(eventStore: EKEventStore())
+        ev.url = URL(string: "message://someid")
+        XCTAssertNil(CalendarManager.calendarItemURL(ev))
+    }
+
+    func testNilWhenNoLink() {
+        let ev = EKEvent(eventStore: EKEventStore())
+        XCTAssertNil(CalendarManager.calendarItemURL(ev))
     }
 }

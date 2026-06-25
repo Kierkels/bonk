@@ -103,7 +103,17 @@ struct MenuView: View {
             Button {
                 app.openReminderEditor()
             } label: {
-                Label(L("Herinnering toevoegen…", "Add reminder…", lang), systemImage: "alarm")
+                HStack(spacing: 8) {
+                    Label(L("Herinnering toevoegen…", "Add reminder…", lang), systemImage: "alarm")
+                    if let shortcut = store.settings.quickReminderShortcut {
+                        Spacer(minLength: 8)
+                        Text(shortcut.displayString)
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
             }
 
             Button { openSettingsReliably() } label: {
@@ -232,6 +242,17 @@ struct MenuView: View {
                     Text(timeRange(event)).font(.subheadline).foregroundStyle(.secondary)
                 }
                 Spacer(minLength: 0)
+                if store.settings.showCalendarItemLink, let calURL = event.calendarItemURL {
+                    Button {
+                        NSWorkspace.shared.open(calURL)
+                    } label: {
+                        Image(systemName: "calendar")
+                            .font(.body)
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .help(L("Open in agenda", "Open in calendar", lang))
+                }
                 if event.id.hasPrefix("reminder:") {
                     Button {
                         app.editReminder(id: event.id)
@@ -379,6 +400,15 @@ struct MenuView: View {
                 Spacer(minLength: 0)
                 if event.joinURL != nil {
                     Image(systemName: "video.fill").font(.caption2).foregroundStyle(.secondary)
+                }
+                if store.settings.showCalendarItemLink, let calURL = event.calendarItemURL {
+                    Button {
+                        NSWorkspace.shared.open(calURL)
+                    } label: {
+                        Image(systemName: "calendar").font(.callout).foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .help(L("Open in agenda", "Open in calendar", lang))
                 }
                 if event.id.hasPrefix("reminder:") {
                     Button {

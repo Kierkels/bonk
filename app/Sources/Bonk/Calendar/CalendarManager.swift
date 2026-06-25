@@ -68,7 +68,8 @@ final class CalendarManager: ObservableObject {
                     joinURL: url,
                     location: ev.location,
                     notes: Self.cleanNotes(ev.notes),
-                    weekday: cal.component(.weekday, from: start)
+                    weekday: cal.component(.weekday, from: start),
+                    calendarItemURL: Self.calendarItemURL(ev)
                 )
             }
             .sorted { $0.start < $1.start }
@@ -101,6 +102,22 @@ final class CalendarManager: ObservableObject {
             .trimmingCharacters(in: .whitespacesAndNewlines)
 
         return collapsed.isEmpty ? nil : collapsed
+    }
+
+    /// Link om de afspraak te openen: bij voorkeur de web-link van het event
+    /// (Google Calendar zet hier z'n `htmlLink`), anders een `ical://ekevent/…`-
+    /// link die de macOS Agenda-app op het item opent. Werkt zo voor élke
+    /// gesyncte agenda; geeft nil als geen van beide beschikbaar is.
+    nonisolated static func calendarItemURL(_ ev: EKEvent) -> URL? {
+        if let web = ev.url, let scheme = web.scheme?.lowercased(),
+           scheme == "http" || scheme == "https" {
+            return web
+        }
+        guard let ident = ev.eventIdentifier,
+              let encoded = ident.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) else {
+            return nil
+        }
+        return URL(string: "ical://ekevent/\(encoded)?method=show&options=more")
     }
 
     /// Bepaalt de RSVP-status van de huidige gebruiker. Events zónder persoonlijke

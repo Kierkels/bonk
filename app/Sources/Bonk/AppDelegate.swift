@@ -11,6 +11,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
     let calendar = CalendarManager()
     let updateChecker = UpdateChecker()
     private let overlay = OverlayController()
+    private let hotKey = HotKeyManager()
 
     @Published var nextEvent: UpcomingEvent?
     @Published var upcoming: [UpcomingEvent] = []
@@ -132,6 +133,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
         forceShownIDs = Set(UserDefaults.standard.stringArray(forKey: forceShownKey) ?? [])
         UNUserNotificationCenter.current().delegate = self
         BannerNotifier.requestAuth(lang: settingsStore.lang)
+        hotKey.onTrigger = { [weak self] in self?.openReminderEditor() }
+        applyQuickReminderShortcut()
         Task {
             await calendar.requestAccess()
             startTimer()
@@ -146,9 +149,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
     private func observeSettings() {
         settingsStore.objectWillChange
             .sink { [weak self] in
-                DispatchQueue.main.async { self?.tick() }
+                DispatchQueue.main.async {
+                    self?.tick()
+                    self?.applyQuickReminderShortcut()
+                }
             }
             .store(in: &cancellables)
+    }
+
+    /// (Her)registreert de globale sneltoets voor "nieuwe herinnering".
+    private func applyQuickReminderShortcut() {
+        hotKey.update(settingsStore.settings.quickReminderShortcut)
     }
 
     /// Reageer direct op agenda-wijzigingen (toevoegen/wijzigen/sync) i.p.v. te

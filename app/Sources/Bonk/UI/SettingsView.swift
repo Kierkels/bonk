@@ -24,10 +24,10 @@ struct SettingsView: View {
         func title(_ lang: Lang) -> String {
             switch self {
             case .general:    return L("Algemeen", "General", lang)
-            case .menubar:    return L("Tonen", "Display", lang)
+            case .menubar:    return L("Weergave", "Display", lang)
             case .rules:      return L("Regels", "Rules", lang)
             case .reminders:  return L("Herinneringen", "Reminders", lang)
-            case .appearance: return L("Weergave", "Appearance", lang)
+            case .appearance: return L("Waarschuwingen", "Alerts", lang)
             case .calendars:  return L("Agenda's", "Calendars", lang)
             }
         }
@@ -37,7 +37,7 @@ struct SettingsView: View {
             case .menubar:    return "eye"
             case .rules:      return "slider.horizontal.3"
             case .reminders:  return "alarm"
-            case .appearance: return "paintbrush"
+            case .appearance: return "bell"
             case .calendars:  return "calendar"
             }
         }
@@ -127,13 +127,13 @@ struct SettingsView: View {
                 Text("Nederlands").tag("nl")
                 Text("English").tag("en")
             }
-            Picker(L("Weergave", "Appearance", lang), selection: $store.settings.appearanceOverride) {
+            Picker(L("Thema", "Theme", lang), selection: $store.settings.appearanceOverride) {
                 Text(L("Systeem", "System", lang)).tag("system")
                 Text(L("Licht", "Light", lang)).tag("light")
                 Text(L("Donker", "Dark", lang)).tag("dark")
             }
         } header: {
-            Text(L("Taal & weergave", "Language & appearance", lang))
+            Text(L("Taal & thema", "Language & theme", lang))
         }
 
         Section(L("Opstarten", "Startup", lang)) {
@@ -209,27 +209,6 @@ struct SettingsView: View {
         }
 
         Section {
-            Stepper(value: $store.settings.displayDays, in: 1...14) {
-                LabeledContent(L("Tonen", "Show", lang),
-                               value: store.settings.displayDays == 1
-                                   ? L("alleen vandaag", "today only", lang)
-                                   : L("\(store.settings.displayDays) dagen", "\(store.settings.displayDays) days", lang))
-            }
-            Toggle(L("Maximum aantal meetings", "Maximum number of meetings", lang), isOn: maxMeetingsEnabled)
-            if let max = store.settings.maxMeetings {
-                Stepper(value: maxMeetingsValue, in: 1...50) {
-                    LabeledContent(L("Maximaal", "At most", lang),
-                                   value: L("\(max) meeting(s)", "\(max) meeting(s)", lang))
-                }
-            }
-        } header: {
-            Text(L("Wat tonen", "What to show", lang))
-        } footer: {
-            subtleFooter(L("Het maximum telt alleen agenda-meetings — herinneringen worden altijd getoond.",
-                   "The maximum counts calendar meetings only — reminders are always shown.", lang))
-        }
-
-        Section {
             Toggle(L("Gekleurde achtergrond bij een nabije meeting", "Coloured background for an upcoming meeting", lang),
                    isOn: $store.settings.menuBarHighlightEnabled)
             if store.settings.menuBarHighlightEnabled {
@@ -250,10 +229,33 @@ struct SettingsView: View {
                 }
             }
         } header: {
-            Text(L("Markering", "Highlight", lang))
+            Text(L("Menubalk-markering", "Menu bar highlight", lang))
         } footer: {
             subtleFooter(L("Kleurt de achtergrond achter het menubalk-icoon zodra de eerstvolgende meeting binnen de ingestelde tijd valt. Bij ‘agenda-kleur’ wordt de achtergrond wit als er meerdere meetings tegelijk uit verschillende agenda’s zijn.",
                    "Colours the background behind the menu bar icon once the next meeting is within the set time. With ‘calendar colour’ the background turns white when several meetings start at once from different calendars.", lang))
+        }
+
+        Section {
+            Stepper(value: $store.settings.displayDays, in: 1...14) {
+                LabeledContent(L("Tonen", "Show", lang),
+                               value: store.settings.displayDays == 1
+                                   ? L("alleen vandaag", "today only", lang)
+                                   : L("\(store.settings.displayDays) dagen", "\(store.settings.displayDays) days", lang))
+            }
+            Toggle(L("Maximum aantal meetings", "Maximum number of meetings", lang), isOn: maxMeetingsEnabled)
+            if let max = store.settings.maxMeetings {
+                Stepper(value: maxMeetingsValue, in: 1...50) {
+                    LabeledContent(L("Maximaal", "At most", lang),
+                                   value: L("\(max) meeting(s)", "\(max) meeting(s)", lang))
+                }
+            }
+            Toggle(L("Knop ‘open in agenda’ per meeting", "‘Open in calendar’ button per meeting", lang),
+                   isOn: $store.settings.showCalendarItemLink)
+        } header: {
+            Text(L("Menu", "Menu", lang))
+        } footer: {
+            subtleFooter(L("Het uitklapmenu. Het maximum telt alleen agenda-meetings — herinneringen worden altijd getoond. ‘Open in agenda’ opent de afspraak in Google Calendar of de Agenda-app.",
+                   "The dropdown menu. The maximum counts calendar meetings only — reminders are always shown. ‘Open in calendar’ opens the event in Google Calendar or the Calendar app.", lang))
         }
     }
 
@@ -405,8 +407,8 @@ struct SettingsView: View {
         Form {
             HStack(alignment: .top, spacing: 10) {
                 Image(systemName: "info.circle.fill").foregroundStyle(.blue)
-                Text(L("Herinneringen staan níét in je agenda en volgen de waarschuwingsregels niet. De weergave hieronder geldt voor álle herinneringen. Toevoegen kan via het Bonk-menu.",
-                       "Reminders aren't in your calendar and don't follow the alert rules. The display below applies to all reminders. Add them via the Bonk menu.", lang))
+                Text(L("Herinneringen staan níét in je agenda en volgen de waarschuwingsregels niet. De instellingen hieronder gelden voor álle herinneringen. Toevoegen kan via het Bonk-menu.",
+                       "Reminders aren't in your calendar and don't follow the alert rules. The settings below apply to all reminders. Add them via the Bonk menu.", lang))
                     .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 0)
             }
@@ -430,7 +432,7 @@ struct SettingsView: View {
                 }
 
                 if store.settings.reminderAlertStyle == .fullScreen {
-                    Picker(L("Weergave", "Appearance", lang), selection: Binding(
+                    Picker(L("Stijl", "Style", lang), selection: Binding(
                         get: { store.settings.reminderAppearanceID ?? store.settings.appearances.first?.id },
                         set: { store.settings.reminderAppearanceID = $0 }
                     )) {
@@ -459,10 +461,21 @@ struct SettingsView: View {
                            isOn: $store.settings.reminderNotifyWhenLocked)
                 }
             } header: {
-                Text(L("Weergave van herinneringen", "Reminder display", lang))
+                Text(L("Waarschuwing voor herinneringen", "Reminder alert", lang))
             } footer: {
                 subtleFooter(L("Geldt voor alle herinneringen. Met 0 min verschijnt de waarschuwing op het tijdstip zelf.",
                        "Applies to all reminders. With 0 min the alert appears at the time itself.", lang))
+            }
+
+            Section {
+                LabeledContent(L("Sneltoets", "Shortcut", lang)) {
+                    ShortcutRecorder(shortcut: $store.settings.quickReminderShortcut, lang: lang)
+                }
+            } header: {
+                Text(L("Snel een herinnering maken", "Quickly create a reminder", lang))
+            } footer: {
+                subtleFooter(L("Stel een systeembrede sneltoets in om direct het venster ‘Nieuwe herinnering’ te openen — waar je ook bent. Gebruik een combinatie met ⌘, ⌥ of ⌃.",
+                       "Set a system-wide shortcut to open the ‘New reminder’ window instantly — wherever you are. Use a combination with ⌘, ⌥ or ⌃.", lang))
             }
 
             Section {
@@ -637,7 +650,7 @@ struct SettingsView: View {
     }
 }
 
-// MARK: - Weergave-tab (lijst van presets)
+// MARK: - Waarschuwingen-tab (lijst van stijl-presets)
 
 private struct AppearanceTab: View {
     @ObservedObject var store: SettingsStore
@@ -646,7 +659,7 @@ private struct AppearanceTab: View {
 
     var body: some View {
         Form {
-            Section(L("Weergaven", "Appearances", lang)) {
+            Section(L("Stijlen", "Styles", lang)) {
                 ForEach(store.settings.appearances) { appearance in
                     Button { editing = appearance } label: { row(appearance) }
                         .buttonStyle(.plain)
@@ -662,13 +675,13 @@ private struct AppearanceTab: View {
 
             Section {
                 Button {
-                    editing = OverlayAppearance(name: L("Nieuwe weergave", "New appearance", lang))
+                    editing = OverlayAppearance(name: L("Nieuwe stijl", "New style", lang))
                 } label: {
-                    Label(L("Weergave toevoegen", "Add appearance", lang), systemImage: "plus")
+                    Label(L("Stijl toevoegen", "Add style", lang), systemImage: "plus")
                 }
             } footer: {
-                subtleFooter(L("Maak meerdere weergaven en kies er per schermvullende regel één — bijv. een rustige blur voor 1-op-1's en een felle gradient voor all-hands.",
-                       "Create multiple appearances and pick one per full-screen rule — e.g. a calm blur for 1-on-1s and a bold gradient for all-hands.", lang))
+                subtleFooter(L("Maak meerdere stijlen en kies er per schermvullende regel één — bijv. een rustige blur voor 1-op-1's en een felle gradient voor all-hands.",
+                       "Create multiple styles and pick one per full-screen rule — e.g. a calm blur for 1-on-1s and a bold gradient for all-hands.", lang))
             }
         }
         .formStyle(.grouped)
@@ -695,7 +708,7 @@ private struct AppearanceTab: View {
     }
 }
 
-// MARK: - Weergave-editor (sheet)
+// MARK: - Stijl-editor (sheet)
 
 private struct AppearanceEditorView: View {
     @ObservedObject var store: SettingsStore
@@ -916,7 +929,7 @@ private struct RuleEditorView: View {
                             Text(L("Waarschuw \(draft.leadMinutes) min van tevoren", "Alert \(draft.leadMinutes) min before", lang))
                         }
                         if draft.alertStyle == .fullScreen {
-                            Picker(L("Weergave", "Appearance", lang), selection: appearanceBinding) {
+                            Picker(L("Stijl", "Style", lang), selection: appearanceBinding) {
                                 ForEach(store.settings.appearances) { appearance in
                                     Text(appearance.name).tag(Optional(appearance.id))
                                 }
@@ -1063,6 +1076,7 @@ struct ReminderEditorView: View {
     @ObservedObject var store: SettingsStore
     var onClose: (() -> Void)? = nil
     @State private var draft: CustomReminder
+    @FocusState private var titleFocused: Bool
     @Environment(\.dismiss) private var dismiss
 
     init(store: SettingsStore, reminder: CustomReminder, onClose: (() -> Void)? = nil) {
@@ -1085,7 +1099,9 @@ struct ReminderEditorView: View {
                 Section(L("Herinnering", "Reminder", lang)) {
                     VStack(alignment: .leading, spacing: 3) {
                         Text(L("Titel", "Title", lang)).font(.caption).foregroundStyle(.secondary)
-                        TextField(L("Titel", "Title", lang), text: $draft.title).labelsHidden().textFieldStyle(.roundedBorder)
+                        TextField(L("Titel", "Title", lang), text: $draft.title)
+                            .labelsHidden().textFieldStyle(.roundedBorder)
+                            .focused($titleFocused)
                     }
                     VStack(alignment: .leading, spacing: 3) {
                         Text(L("Beschrijving (optioneel)", "Description (optional)", lang)).font(.caption).foregroundStyle(.secondary)
@@ -1142,6 +1158,11 @@ struct ReminderEditorView: View {
         }
         .frame(width: 460, height: 440)
         .preferredColorScheme(store.colorScheme)
+        .onAppear {
+            // Korte vertraging zodat het venster eerst key wordt (vooral bij openen
+            // via de globale sneltoets vanuit een andere app).
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { titleFocused = true }
+        }
     }
 
     /// Rij met weekdag-knoppen (ma … zo) voor een wekelijkse herhaling.

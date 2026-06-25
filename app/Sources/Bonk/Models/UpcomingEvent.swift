@@ -48,4 +48,8 @@ struct UpcomingEvent: Identifiable, Equatable {
     let location: String?
     let notes: String?
     let weekday: Int          // 1 = zondag ... 7 = zaterdag (Calendar.weekday)
+    /// Link om de afspraak in de agenda te openen: de web-link van het event
+    /// (bv. Google Calendar `htmlLink`) als die er is, anders een
+    /// `ical://ekevent/…`-link naar de macOS Agenda-app. Nil voor herinneringen.
+    var calendarItemURL: URL? = nil
 }
