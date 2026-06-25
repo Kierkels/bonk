@@ -394,12 +394,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
                 onJoin: { AlertSound.stop(); if let u = event.joinURL { NSWorkspace.shared.open(u) } },
                 onSnooze: { [weak self] mins in AlertSound.stop(); self?.snooze(event: event, minutes: mins) },
                 onSnoozeUntilStart: { [weak self] in AlertSound.stop(); self?.snoozeUntilStart(event: event) },
-                // Herinnering: "Sluiten" sluit alleen het overlay (de herinnering blijft
-                // staan en wordt niet genegeerd/verwijderd). Meeting: "Negeren".
-                onDismiss: { [weak self] in
-                    AlertSound.stop()
-                    if !MeetingEngine.isReminderID(event.id) { self?.dismissEvent(event) }
-                }
+                // "Sluiten" sluit alléén het overlay — zowel voor herinneringen als
+                // meetings. Negeren kan uitsluitend vanuit het menu (✕ op een kaart).
+                onDismiss: { AlertSound.stop() }
             )
         }
     }

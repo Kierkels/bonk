@@ -303,7 +303,7 @@ struct MeetingCardView: View {
             .fixedSize()
 
             Button(action: meeting.onDismiss) {
-                actionLabel(isReminder ? L("Sluiten", "Close", lang) : L("Negeren", "Ignore", lang),
+                actionLabel(L("Sluiten", "Close", lang),
                             icon: "xmark", fill: .white.opacity(0.10))
             }
             .buttonStyle(.plain)
