@@ -5,7 +5,7 @@ description: Feature-map, cross-impact en regressie-checklist voor de Bonk macOS
 
 # Bonk — feature-map & impact-gids
 
-Bonk is een macOS-menubalk-app (SwiftUI, Swift Package Manager, geen .xcodeproj, macOS 14+) die je vlak vóór een agenda-meeting waarschuwt met een schermvullend overlay of een notificatie, met one-click joinen. Repo: `Kierkels/bonk` (mappen `app/` en `website/`).
+Bonk is een macOS-menubalk-app (SwiftUI, Swift Package Manager, geen .xcodeproj, macOS 14+) die je vlak vóór een agenda-meeting waarschuwt met een schermvullend overlay of een subtiele **pill** (Notion-Calendar-achtig), met one-click joinen. Repo: `Kierkels/bonk` (mappen `app/` en `website/`).
 
 Gebruik deze gids zo: zoek de feature die je raakt → lees "raakt" om te zien wat meeverandert → loop de **Regressie-checklist** onderaan af voor de geraakte onderdelen.
 
@@ -17,7 +17,7 @@ Gebruik deze gids zo: zoek de feature die je raakt → lees "raakt" om te zien w
   - `SettingsStore.swift` — `AppSettings` (alle instellingen + Codable-migratie) + `SettingsStore` (UserDefaults, `lang`, `colorScheme`, regel-/weergave-/herinnering-beheer). Key: `BonkSettings.v1`.
   - `MeetingEngine.swift` — **pure beslis-logica** (geen UI/AppKit/EventKit): negeren/regels, `classify`, vuur/snooze-`decision`, `highlightChoice`, reminder-id-parsing, agenda-selectie. `AppDelegate` delegeert hiernaartoe → dit is wat de unit-tests dekken.
   - `MeetingRule.swift` — één waarschuwingsregel + `matches(_:)`.
-  - `AlertStyle.swift` — `.fullScreen` / `.banner` / `.ignore`.
+  - `AlertStyle.swift` — `.fullScreen` / `.banner` / `.ignore`. **Let op:** `.banner` (UI: "Notificatie") rendert sinds de pill-feature een **pill** (niet meer een `UNUserNotification`); een echte notificatie blijft alleen als lock-scherm-vangnet (zie feature 10).
   - `OverlayAppearance.swift` — weergave-preset (`OverlayBackgroundStyle` gradient/blur/image/solid + scrim/blur/`show*`-toggles) **en** de `Color`-helpers (`init(hex:)`, `hexString`, `readableForeground`, `blended`).
   - `CustomReminder.swift` — zelf toegevoegde herinnering (alleen vandaag).
   - `UpcomingEvent.swift` — genormaliseerd event (agenda-meeting óf herinnering; herinnering-id heeft prefix `reminder:`).
@@ -31,7 +31,8 @@ Gebruik deze gids zo: zoek de feature die je raakt → lees "raakt" om te zien w
   - `MenuView.swift` — menubalk-popover (volgende/daarna/genegeerd, join, negeer/verwijder, reminder bewerken, update-banner).
   - `SettingsView.swift` — instellingen, tabs: **Algemeen** (`generalTab`: app-info, Bonk aan/uit, taal & thema, opstarten, updates), **Weergave** (enum-case `.menubar` / `menuBarTab` — let op: weergavenaam is "Weergave"/"Display", code-id heet nog `menubar`; drie secties met expliciet menu/menubalk-onderscheid: "Menubalk" (stijl + `menuBarOnlyToday`) + "Menubalk-markering" (highlight) + "Menu" (dagvenster/max + `showCalendarItemLink`-toggle)), **Regels** (`rulesTab`), **Herinneringen** (`remindersTab`), **Waarschuwingen** (enum-case `.appearance` / `AppearanceTab` — UI-naam "Waarschuwingen"/"Alerts", icoon `bell`; lijst van stijl-presets, in UI "Stijlen"/"Styles"; code-id heet nog `appearance`), **Agenda's** (`calendarsTab`: agendatoegang + selectie/kleuren). Plus `RuleEditorView`, `ReminderEditorView`. **Let op naamgeving:** "weergave-preset" heet in de UI nu **"stijl"** (de tab-naam "Weergave" is gereserveerd voor menu/menubalk); de licht/donker-keuze heet in de UI **"Thema"** (code: `appearanceOverride`).
   - `OverlayView.swift` / `OverlayBackgroundView.swift` / `OverlayWindow.swift` — schermvullend alert + achtergrond + venster/`OverlayController`.
-  - `BannerNotifier.swift` — `UNUserNotification`-notificaties (meeting + update).
+  - `PillView.swift` / `PillController.swift` — de subtiele **pill** (`.banner`-stijl): `PillCardView` (SwiftUI-kaart per afspraak) + `PillController` (één venster per pill, stapelen, schermvolgen). Zie feature 10.
+  - `BannerNotifier.swift` — `UNUserNotification`-notificaties (alleen nog **update**-melding + lock-scherm-vangnet voor pill/overlay).
 - `app/build.sh` — bouwt/onderteken/installeert/herstart; **bevat de versie** (`CFBundleShortVersionString`/`CFBundleVersion`) in een inline Info.plist.
 - `.github/workflows/` — `release-app.yml` (release + DMG bij push naar main die `app/**` raakt) en `deploy-website.yml` (Cloudflare Pages bij `website/**`).
 - `website/` — marketingsite (`index.html`, `styles.css`, `assets/`), incl. OG/Twitter preview.
@@ -109,8 +110,19 @@ Gebruik deze gids zo: zoek de feature die je raakt → lees "raakt" om te zien w
 - **Waar:** `CalendarManager.calendarItemURL(_:)` (`nonisolated static`, getest in `ColorAndNotesTests` → `CalendarItemURLTests`) zet `UpcomingEvent.calendarItemURL` (default `nil`). Herinneringen krijgen `nil` (geen agenda-item).
 - **Raakt / let op:** `ev.url` wordt óók door `LinkDetector` bekeken voor de join-link, maar die filtert op Meet/Teams/Zoom — de Google `htmlLink` (calendar-host) matcht dat niet, dus geen conflict. Nieuw veld in `UpcomingEvent` heeft een **default `nil`** zodat bestaande constructie-sites (reminders, test-`Fixtures`) ongemoeid blijven.
 
-### 10. Notificaties (subtiele variant)
-- **Wat:** `UNUserNotification` met Joinen/Negeren-acties (categorieën MEETING_JOIN/MEETING) + **update-notificatie** (categorie BONK_UPDATE, actie Downloaden).
+### 10. Pill (subtiele waarschuwing — `.banner`-stijl)
+- **Wat:** de subtiele waarschuwing is een **Notion-Calendar-achtige pill** boven aan het actieve scherm (geen macOS-notificatie meer — die kon geen join/snooze). Toont icoon + titel + **live aftelteller** (`TimelineView`) + ruimte (`mappin.and.ellipse` uit `event.location`). Acties: **Joinen** (groen, alleen bij `joinURL`) óf **Gereed** (accent, alleen bij herinneringen), **Snooze**-menu (1/2/5/10 min + "tot start" als `event.start > now`), **Sluiten** (×). **Klik op de body** (icoon/titel) opent het item in de agenda (`calendarItemURL`). Meerdere tegelijk = **gestapeld** (één venster per pill). Icoon: `video.fill` (meeting met Meet) / `calendar` (meeting zonder) / `bell.fill` (herinnering); accentkleur = agenda-kleur (`pillAccent` → `calendarColor`), herinnering = paars `#7C3AED`.
+- **Waar:** `UI/PillView.swift` (`PillCardView` + `pillCountdown`), `UI/PillController.swift` (`PillPanel` + `PillController`); aangestuurd vanuit `AppDelegate.fire` (`case .banner`). Acties hergebruiken `snooze`/`snoozeUntilStart`/`joinURL`/`calendarItemURL` (net als het overlay). Klik/snooze/join/sluiten verwijderen de pill (`remove(id:)`); open-in-agenda laat 'm staan.
+- **Vensters/gedrag (valkuilen — bewezen in de spike):**
+  - **Non-activating** `NSPanel` (`.nonactivatingPanel`, `becomesKeyOnlyIfNeeded`) → steelt geen toetsenbordfocus; knoppen/menu werken toch.
+  - `level = .screenSaver` + `collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]` → **drijft boven fullscreen-apps**. `constrainFrameRect` override (`PillPanel`) → niet teruggeklemd naar het hoofdscherm.
+  - **Schermvolgen:** klik = scherm onder de muis; app-wissel = scherm van het **voorste venster van de voorste app** via `NSWorkspace`+`CGWindowList` (TCC-vrij). **`NSScreen.main` volgt NIET de focus van ándere apps** (achtergrond-accessory) — daarom de muis/front-window-aanpak. **Cross-display verplaatsen moet DIRECT** (`setFrameOrigin`); een geanimeerde (`animator().setFrameOrigin`) cross-display move **klemt het venster terug** op het oude scherm. Daarom: fade-out → directe sprong → fade-in.
+  - **Verschijnen/verdwijnen:** fade + iets opkomen/wegzakken; stapelen top-down (`layout`).
+  - **Lock-scherm-vangnet:** op een vergrendeld scherm is de pill onzichtbaar → `AppDelegate.fire` toont dan óók `BannerNotifier.show` (echte notificatie).
+- **Raakt / let op:** geluid loopt nog steeds via `AlertSound.play` ná de `switch` in `fire` (zie 11b). Respecteert thema via `.preferredColorScheme(store.colorScheme)`. Reminders → "Gereed"/×; meetings zonder join → geen prominente knop, wel body-klik→agenda.
+
+### 10b. Notificaties (`UNUserNotification`)
+- **Wat:** nog gebruikt voor de **update-notificatie** (categorie BONK_UPDATE, actie Downloaden) én als **lock-scherm-vangnet** voor de pill (`.banner`) en het overlay (`.fullScreen` + `notifyWhenLocked`). Meeting-acties: Joinen/Negeren (categorieën MEETING_JOIN/MEETING).
 - **Waar:** `BannerNotifier.swift`; afhandeling in `AppDelegate.userNotificationCenter(_:didReceive:)`.
 - **Raakt / let op:** nieuwe categorie/actie ook in `requestAuth` registreren én in `didReceive` afhandelen. Update-klik opent `updateURL`.
 
@@ -151,6 +163,7 @@ Gebruik deze gids zo: zoek de feature die je raakt → lees "raakt" om te zien w
 - **Wat gedekt is (pure logica):** `MeetingEngine` (negeren/regels, classify, vuur/snooze-`decision` incl. de snooze-na-grace-regressie, `highlightChoice` incl. wit-bij-meerdere-agenda's en reminders, reminder-id, lege-agenda=niets), `MeetingRule.matches`, `LinkDetector.firstURL` (Meet/Zoom/Teams), `UpdateChecker.isNewer`, `Color(hex:)`/`readableForeground`, `CalendarManager.cleanNotes`.
 - **Wat NIET door tests gedekt is** (→ skill-checklist + handmatig): UI/`MenuBarExtra`-rendering, TCC, knop-klikgedrag, notificatie-bezorging, launch-at-login, EventKit-sync.
 - **Overlay autonoom verifiëren (zonder gebruiker):** maak een echte agenda-afspraak ~75s vooruit (AppleScript Calendar, titel zonder "ios" → matcht de fullScreen-regel), wacht tot vuren, en detecteer het overlay-venster via `CGWindowListCopyWindowInfo` (filter `kCGWindowOwnerName == "Bonk"`, `layer >= CGWindowLevelForKey(.screenSaverWindow)`, full-screen bounds — één venster per scherm). Dit bewijst dat het overlay (en multi-screen) toont, zonder screenshot. Opruimen: event verwijderen + Bonk herstarten. CGWindowList-geometrie vereist géén Screen Recording-TCC.
+- **Pill autonoom verifiëren:** idem maar met een regel/herinnering op stijl **Notificatie** (`.banner`); de pill is een Bonk-venster op statusbalk-niveau met **niet-full-screen** bounds (~440 breed) top-center. Filter `CGWindowListCopyWindowInfo` op `kCGWindowOwnerName == "Bonk"` + smalle bounds bovenaan het scherm. (Headless de regels uitlezen via `defaults read` lukt niet betrouwbaar — die kapt de lange Data af; zet de stijl in-app of test via de UI.)
 - **Regel:** raak je beslis-logica aan, doe het in `MeetingEngine` (of een andere pure functie) en **breid de tests uit** — begin met een test die de bug/het nieuwe gedrag vastlegt. Pure functies moeten `nonisolated` zijn als hun type `@MainActor` is (anders niet aanroepbaar vanuit tests).
 
 ## Bekende valkuilen (altijd onthouden)
@@ -169,7 +182,8 @@ Gebruik deze gids zo: zoek de feature die je raakt → lees "raakt" om te zien w
 5. **Menu-popover**: volgende/daarna/genegeerd correct; join, negeren (meeting) vs verwijderen (herinnering), herinnering bewerken, update-banner; `displayDays`/`maxMeetings` begrenzen de lijst (max telt alleen meetings, herinneringen altijd zichtbaar; meetings van buiten het venster vuren wél nog).
 6. **Regels**: volgorde-matching klopt; `attendanceFilter` (multiselect RSVP)/`daysOfWeek`/`titleContains`/`calendarIDs` (multiselect) filteren; `.ignore` waarschuwt niet. Geluid: max alarm-duur instelbaar (regel én herinneringen); alarm speelt op systeemvolume, "speel ook bij gedempt" un-muet tijdelijk.
 7. **Overlay**: schermvullend op hoofdscherm, achtergrond op overige schermen; blur vraagt/gebruikt Screen Recording met fallback; `show*`-toggles werken; meerdere gelijktijdige meetings; ESC én de ✕-knop ("Sluiten") sluiten alléén (negeren niet — negeren kan alleen vanuit het menu).
+7b. **Pill** (`.banner`): verschijnt top-center op het **actieve** scherm, **boven fullscreen-apps**, steelt geen focus; aftelteller loopt; Joinen (met link) / Gereed (herinnering) / Snooze-menu / Sluiten werken; **body-klik opent de agenda**; meerdere = gestapeld; **verhuist mee** bij klikken/wisselen naar een ander scherm (cross-display direct, geen klem); op vergrendeld scherm valt 'ie terug op een notificatie.
 8. **Agenda's**: lege selectie = geen agenda-meetings; per-agenda kleur; toegang vragen werkt.
 9. **Herinneringen**: toevoegen/bewerken/verwijderen via menu én instellingen; gelden alleen vandaag.
-10. **Notificaties & update-check**: banner-acties werken; update-melding alleen bij hogere versie, één keer per versie.
+10. **Notificaties & update-check**: lock-scherm-vangnet + update-melding werken; update-melding alleen bij hogere versie, één keer per versie.
 11. **Release/website** (indien geraakt): versie in `build.sh` gebumpt vóór push naar main; OG-cache-buster bij beeldwijziging.

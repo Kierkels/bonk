@@ -11,6 +11,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
     let calendar = CalendarManager()
     let updateChecker = UpdateChecker()
     private let overlay = OverlayController()
+    private let pill = PillController()
     private let hotKey = HotKeyManager()
 
     @Published var nextEvent: UpcomingEvent?
@@ -94,6 +95,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
             return Color(cal.color)
         }
         return Color(hex: "#7C3AED")
+    }
+
+    /// Accentkleur voor de pill: agenda-kleur voor meetings, accent-paars voor herinneringen.
+    private func pillAccent(for event: UpcomingEvent) -> Color {
+        MeetingEngine.isReminderID(event.id) ? Color(hex: "#7C3AED") : calendarColor(event.calendarID)
     }
 
     private func truncatedTitle(_ title: String, max: Int = 24) -> String {
@@ -355,7 +361,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
         }
         switch rule.alertStyle {
         case .banner:
-            BannerNotifier.show(event: event, lang: settingsStore.lang)
+            // De subtiele waarschuwing is nu een pill (met join/snooze/open-in-agenda).
+            pill.show(
+                event: event,
+                accent: pillAccent(for: event),
+                lang: settingsStore.lang,
+                colorScheme: settingsStore.colorScheme,
+                onJoin: { AlertSound.stop(); if let u = event.joinURL { NSWorkspace.shared.open(u) } },
+                onSnooze: { [weak self] (mins: Int) in AlertSound.stop(); self?.snooze(event: event, minutes: mins) },
+                onSnoozeUntilStart: { [weak self] in AlertSound.stop(); self?.snoozeUntilStart(event: event) },
+                onDismiss: { AlertSound.stop() },
+                onOpenCalendar: { if let u = event.calendarItemURL { NSWorkspace.shared.open(u) } }
+            )
+            // Vangnet: op een vergrendeld scherm is de pill niet zichtbaar → notificatie.
+            if AlertSound.screenIsLocked {
+                BannerNotifier.show(event: event, lang: settingsStore.lang)
+            }
         case .fullScreen:
             // Bij een vergrendeld scherm zie je het overlay toch niet → optioneel
             // een notificatie zodat je het tóch ziet. Het overlay blijft staan en
@@ -403,7 +424,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
                 lang: settingsStore.lang,
                 backdrops: backs,
                 onJoin: { AlertSound.stop(); if let u = event.joinURL { NSWorkspace.shared.open(u) } },
-                onSnooze: { [weak self] mins in AlertSound.stop(); self?.snooze(event: event, minutes: mins) },
+                onSnooze: { [weak self] (mins: Int) in AlertSound.stop(); self?.snooze(event: event, minutes: mins) },
                 onSnoozeUntilStart: { [weak self] in AlertSound.stop(); self?.snoozeUntilStart(event: event) },
                 // "Sluiten" sluit alléén het overlay — zowel voor herinneringen als
                 // meetings. Negeren kan uitsluitend vanuit het menu (✕ op een kaart).
