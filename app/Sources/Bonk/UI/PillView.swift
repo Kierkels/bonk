@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// De subtiele "Notion Calendar"-achtige pill voor één afspraak/herinnering.
+/// De subtiele pill (bovenaan het scherm) voor één afspraak/herinnering.
 /// Toont icoon + titel + live aftelteller (+ ruimte), met Joinen/Gereed, Snooze
 /// (menu) en Sluiten. Klik op de body (icoon/titel) opent het item in de agenda.
 struct PillCardView: View {
@@ -116,7 +116,9 @@ struct PillCardView: View {
             Image(systemName: "xmark").font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(.secondary)
         }
-        .buttonStyle(.borderless)
+        // `.plain` (net als Joinen/Snooze) → respecteert de grijze `.secondary`;
+        // `.borderless` tint het kruisje met de accentkleur + een bezel.
+        .buttonStyle(.plain)
     }
 }
 

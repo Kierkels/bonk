@@ -5,7 +5,7 @@ description: Feature-map, cross-impact en regressie-checklist voor de Bonk macOS
 
 # Bonk — feature-map & impact-gids
 
-Bonk is een macOS-menubalk-app (SwiftUI, Swift Package Manager, geen .xcodeproj, macOS 14+) die je vlak vóór een agenda-meeting waarschuwt met een schermvullend overlay of een subtiele **pill** (Notion-Calendar-achtig), met one-click joinen. Repo: `Kierkels/bonk` (mappen `app/` en `website/`).
+Bonk is een macOS-menubalk-app (SwiftUI, Swift Package Manager, geen .xcodeproj, macOS 14+) die je vlak vóór een agenda-meeting waarschuwt met een schermvullend overlay of een subtiele **pill** boven aan het scherm, met one-click joinen. Repo: `Kierkels/bonk` (mappen `app/` en `website/`).
 
 Gebruik deze gids zo: zoek de feature die je raakt → lees "raakt" om te zien wat meeverandert → loop de **Regressie-checklist** onderaan af voor de geraakte onderdelen.
 
@@ -111,7 +111,7 @@ Gebruik deze gids zo: zoek de feature die je raakt → lees "raakt" om te zien w
 - **Raakt / let op:** `ev.url` wordt óók door `LinkDetector` bekeken voor de join-link, maar die filtert op Meet/Teams/Zoom — de Google `htmlLink` (calendar-host) matcht dat niet, dus geen conflict. Nieuw veld in `UpcomingEvent` heeft een **default `nil`** zodat bestaande constructie-sites (reminders, test-`Fixtures`) ongemoeid blijven.
 
 ### 10. Pill (subtiele waarschuwing — `.banner`-stijl)
-- **Wat:** de subtiele waarschuwing is een **Notion-Calendar-achtige pill** boven aan het actieve scherm (geen macOS-notificatie meer — die kon geen join/snooze). Toont icoon + titel + **live aftelteller** (`TimelineView`) + ruimte (`mappin.and.ellipse` uit `event.location`). Acties: **Joinen** (groen, alleen bij `joinURL`) óf **Gereed** (accent, alleen bij herinneringen), **Snooze**-menu (1/2/5/10 min + "tot start" als `event.start > now`), **Sluiten** (×). **Klik op de body** (icoon/titel) opent het item in de agenda (`calendarItemURL`). Meerdere tegelijk = **gestapeld** (één venster per pill). Icoon: `video.fill` (meeting met Meet) / `calendar` (meeting zonder) / `bell.fill` (herinnering); accentkleur = agenda-kleur (`pillAccent` → `calendarColor`), herinnering = paars `#7C3AED`.
+- **Wat:** de subtiele waarschuwing is een **subtiele pill** boven aan het actieve scherm (geen macOS-notificatie meer — die kon geen join/snooze). Toont icoon + titel + **live aftelteller** (`TimelineView`) + ruimte (`mappin.and.ellipse` uit `event.location`). Acties: **Joinen** (groen, alleen bij `joinURL`) óf **Gereed** (accent, alleen bij herinneringen), **Snooze**-menu (1/2/5/10 min + "tot start" als `event.start > now`), **Sluiten** (×). **Klik op de body** (icoon/titel) opent het item in de agenda (`calendarItemURL`). Meerdere tegelijk = **gestapeld** (één venster per pill). Icoon: `video.fill` (meeting met Meet) / `calendar` (meeting zonder) / `bell.fill` (herinnering); accentkleur = agenda-kleur (`pillAccent` → `calendarColor`), herinnering = paars `#7C3AED`.
 - **Waar:** `UI/PillView.swift` (`PillCardView` + `pillCountdown`), `UI/PillController.swift` (`PillPanel` + `PillController`); aangestuurd vanuit `AppDelegate.fire` (`case .banner`). Acties hergebruiken `snooze`/`snoozeUntilStart`/`joinURL`/`calendarItemURL` (net als het overlay). Klik/snooze/join/sluiten verwijderen de pill (`remove(id:)`); open-in-agenda laat 'm staan.
 - **Vensters/gedrag (valkuilen — bewezen in de spike):**
   - **Non-activating** `NSPanel` (`.nonactivatingPanel`, `becomesKeyOnlyIfNeeded`) → steelt geen toetsenbordfocus; knoppen/menu werken toch.
