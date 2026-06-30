@@ -199,6 +199,11 @@ struct SettingsView: View {
             Picker(L("Menubalk toont", "Menu bar shows", lang), selection: $store.settings.menuBarStyle) {
                 ForEach(MenuBarStyle.allCases) { Text($0.label(lang)).tag($0) }
             }
+            Picker(L("Icoon", "Icon", lang), selection: $store.settings.menuBarIcon) {
+                ForEach(MenuBarIcon.allCases) { icon in
+                    Label(icon.label(lang), systemImage: icon.symbolName).tag(icon)
+                }
+            }
             Toggle(L("Alleen voor meetings van vandaag", "Only for today's meetings", lang),
                    isOn: $store.settings.menuBarOnlyToday)
         } header: {
@@ -1072,17 +1077,56 @@ private struct RuleEditorView: View {
 // MARK: - Herbruikbare componenten
 
 /// Een kleine schakelbare dag-knop (Ma, Di, …).
+/// Hoe het vuurmoment van een eenmalige herinnering wordt ingevoerd.
+fileprivate enum WhenMode: Hashable { case relative, exact }
+
+/// Eenheid voor een relatieve herinnering ("over X …").
+fileprivate enum RelativeUnit: Hashable {
+    case minutes, hours
+    var maxAmount: Int { self == .minutes ? 600 : 48 }
+}
+
+/// Een snelkeuze-knop voor een relatieve herinnering.
+fileprivate struct RelativePreset {
+    let amount: Int
+    let unit: RelativeUnit
+    var minutes: Int { unit == .minutes ? amount : amount * 60 }
+    func label(_ lang: Lang) -> String {
+        unit == .minutes ? "\(amount) min" : L("\(amount) u", "\(amount) h", lang)
+    }
+}
+
 struct ReminderEditorView: View {
     @ObservedObject var store: SettingsStore
     var onClose: (() -> Void)? = nil
     @State private var draft: CustomReminder
+    @State private var whenMode: WhenMode
+    @State private var relativeAmount: Int = 15
+    @State private var relativeUnit: RelativeUnit = .minutes
     @FocusState private var titleFocused: Bool
     @Environment(\.dismiss) private var dismiss
+
+    private static let presets: [RelativePreset] = [
+        .init(amount: 5, unit: .minutes),
+        .init(amount: 15, unit: .minutes),
+        .init(amount: 30, unit: .minutes),
+        .init(amount: 1, unit: .hours),
+        .init(amount: 2, unit: .hours),
+    ]
 
     init(store: SettingsStore, reminder: CustomReminder, onClose: (() -> Void)? = nil) {
         self.store = store
         self.onClose = onClose
         _draft = State(initialValue: reminder)
+        // Nieuwe, eenmalige herinneringen openen in de snelle "over…"-modus;
+        // bestaande herinneringen tonen hun ingestelde tijdstip.
+        let isNew = !store.settings.reminders.contains { $0.id == reminder.id }
+        _whenMode = State(initialValue: (isNew && reminder.repeatRule == .none) ? .relative : .exact)
+    }
+
+    /// Het aantal minuten dat de relatieve invoer vertegenwoordigt.
+    private var relativeMinutes: Int {
+        relativeUnit == .minutes ? relativeAmount : relativeAmount * 60
     }
 
     private func close() {
@@ -1096,7 +1140,7 @@ struct ReminderEditorView: View {
     var body: some View {
         VStack(spacing: 0) {
             Form {
-                Section(L("Herinnering", "Reminder", lang)) {
+                Section {
                     VStack(alignment: .leading, spacing: 3) {
                         Text(L("Titel", "Title", lang)).font(.caption).foregroundStyle(.secondary)
                         TextField(L("Titel", "Title", lang), text: $draft.title)
@@ -1105,7 +1149,9 @@ struct ReminderEditorView: View {
                     }
                     VStack(alignment: .leading, spacing: 3) {
                         Text(L("Beschrijving (optioneel)", "Description (optional)", lang)).font(.caption).foregroundStyle(.secondary)
-                        TextField(L("Beschrijving", "Description", lang), text: $draft.notes).labelsHidden().textFieldStyle(.roundedBorder)
+                        TextField(L("Beschrijving", "Description", lang), text: $draft.notes, axis: .vertical)
+                            .labelsHidden().textFieldStyle(.roundedBorder)
+                            .lineLimit(3...6)
                     }
                 }
                 Section {
@@ -1116,6 +1162,9 @@ struct ReminderEditorView: View {
                         Text(L("Wekelijks", "Weekly", lang)).tag(ReminderRepeat.weekly)
                     }
                     .onChange(of: draft.repeatRule) { _, rule in
+                        // Relatief ("over…") geldt alleen voor eenmalige herinneringen;
+                        // herhalende hebben een vast tijdstip nodig.
+                        if rule != .none { whenMode = .exact }
                         // Bij wekelijks zonder keuze: start met de weekdag van de datum.
                         if rule == .weekly && draft.weekdays.isEmpty {
                             draft.weekdays = [Calendar.current.component(.weekday, from: draft.date)]
@@ -1127,11 +1176,24 @@ struct ReminderEditorView: View {
                     }
 
                     if draft.repeatRule == .none {
-                        DatePicker(L("Datum", "Date", lang), selection: $draft.date,
-                                   displayedComponents: [.date])
+                        Picker(L("Wanneer", "When", lang), selection: $whenMode) {
+                            Text(L("Over…", "In…", lang)).tag(WhenMode.relative)
+                            Text(L("Op tijdstip", "At time", lang)).tag(WhenMode.exact)
+                        }
+                        .pickerStyle(.segmented)
+                        .labelsHidden()
                     }
-                    DatePicker(L("Tijd", "Time", lang), selection: $draft.date,
-                               displayedComponents: [.hourAndMinute])
+
+                    if draft.repeatRule == .none && whenMode == .relative {
+                        relativeControls
+                    } else {
+                        if draft.repeatRule == .none {
+                            DatePicker(L("Datum", "Date", lang), selection: $draft.date,
+                                       displayedComponents: [.date])
+                        }
+                        DatePicker(L("Tijd", "Time", lang), selection: $draft.date,
+                                   displayedComponents: [.hourAndMinute])
+                    }
                 } header: {
                     Text(L("Wanneer", "When", lang))
                 } footer: {
@@ -1156,7 +1218,7 @@ struct ReminderEditorView: View {
             }
             .padding(12)
         }
-        .frame(width: 460, height: 440)
+        .frame(width: 460, height: 480)
         .preferredColorScheme(store.colorScheme)
         .onAppear {
             // Korte vertraging zodat het venster eerst key wordt (vooral bij openen
@@ -1186,9 +1248,63 @@ struct ReminderEditorView: View {
         }
     }
 
+    /// Snelle "over X minuten/uur"-invoer: presets + een aangepaste invoer.
+    private var relativeControls: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Snelkeuze-pillen, gelijk verdeeld als één strakke rij.
+            HStack(spacing: 6) {
+                ForEach(Self.presets, id: \.minutes) { preset in
+                    let selected = relativeMinutes == preset.minutes
+                    Button {
+                        relativeAmount = preset.amount
+                        relativeUnit = preset.unit
+                    } label: {
+                        Text(preset.label(lang))
+                            .font(.caption.weight(.medium))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 6)
+                            .background(selected ? Color.accentColor : Color.secondary.opacity(0.12),
+                                        in: Capsule())
+                            .foregroundStyle(selected ? Color.white : Color.primary)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            // Aangepaste hoeveelheid: één compacte regel "Anders  15 ▲▼  minuten ▾",
+            // links gegroepeerd. De leesbare samenvatting ("Over 15 minuten — om
+            // 14:34.") staat in de footer, dus hier hoeft geen "Over"-tekst bij.
+            HStack(spacing: 8) {
+                Text(L("Anders", "Custom", lang))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Text("\(relativeAmount)")
+                    .monospacedDigit()
+                    .frame(minWidth: 24, alignment: .trailing)
+                Stepper("", value: $relativeAmount, in: 1...relativeUnit.maxAmount)
+                    .labelsHidden()
+                    .fixedSize()
+                Picker("", selection: $relativeUnit) {
+                    Text(L("minuten", "minutes", lang)).tag(RelativeUnit.minutes)
+                    Text(L("uur", "hours", lang)).tag(RelativeUnit.hours)
+                }
+                .labelsHidden()
+                .fixedSize()
+                .onChange(of: relativeUnit) { _, unit in
+                    if relativeAmount > unit.maxAmount { relativeAmount = unit.maxAmount }
+                }
+                Spacer(minLength: 0)
+            }
+        }
+    }
+
     /// Leesbare samenvatting onder de "Wanneer"-sectie.
     private var whenFooter: String {
         let f = DateFormatter(); f.dateFormat = "HH:mm"
+        if draft.repeatRule == .none && whenMode == .relative {
+            let fire = Date().addingTimeInterval(Double(relativeMinutes) * 60)
+            return L("Over \(relativeText) — om \(f.string(from: fire)).",
+                     "In \(relativeText) — at \(f.string(from: fire)).", lang)
+        }
         let time = f.string(from: draft.date)
         switch draft.repeatRule {
         case .none:
@@ -1211,7 +1327,25 @@ struct ReminderEditorView: View {
         }
     }
 
+    /// Leesbare hoeveelheid voor de relatieve footer, bv. "15 minuten" / "1 uur".
+    private var relativeText: String {
+        if relativeUnit == .minutes {
+            return relativeAmount == 1
+                ? L("1 minuut", "1 minute", lang)
+                : L("\(relativeAmount) minuten", "\(relativeAmount) minutes", lang)
+        }
+        return relativeAmount == 1
+            ? L("1 uur", "1 hour", lang)
+            : L("\(relativeAmount) uur", "\(relativeAmount) hours", lang)
+    }
+
     private func save() {
+        // Relatieve invoer pas op het moment van bewaren omzetten naar een
+        // absoluut tijdstip, zodat het tijdstip niet wegloopt terwijl het
+        // venster open staat.
+        if draft.repeatRule == .none && whenMode == .relative {
+            draft.date = Date().addingTimeInterval(Double(relativeMinutes) * 60)
+        }
         if isExisting { store.updateReminder(draft) } else { store.addReminder(draft) }
     }
 }

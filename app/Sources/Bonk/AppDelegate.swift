@@ -22,8 +22,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
     private var wakeTimer: Timer?                    // exacte one-shot timer op het volgende vuurmoment
     private var firedKeys: Set<String> = []
     private var snoozeUntil: [String: Date] = [:]
-    private var dismissedIDs: Set<String> = []      // handmatig genegeerd
-    private var forceShownIDs: Set<String> = []     // weer geactiveerd (overschrijft negeer-regel)
+    // Genegeerde/heractiveerde keuzes, bewaard met de einddatum van de meeting,
+    // zodat een keuze pas wordt opgeschoond als de meeting echt voorbij is — los
+    // van het (kleinere) dagvenster dat de gebruiker toevallig toont.
+    private var dismissedEnds: [String: Date] = [:]   // handmatig genegeerd
+    private var forceShownEnds: [String: Date] = [:]  // weer geactiveerd (overschrijft negeer-regel)
+    private var dismissedIDs: Set<String> { Set(dismissedEnds.keys) }
+    private var forceShownIDs: Set<String> { Set(forceShownEnds.keys) }
     private var cancellables = Set<AnyCancellable>()
     private let dismissedKey = "BonkDismissedIDs.v1"
     private let forceShownKey = "BonkForceShownIDs.v1"
@@ -40,6 +45,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
         MeetingEngine.warnRule(for: event, rules: settingsStore.settings.rules,
                                dismissed: dismissedIDs, forceShown: forceShownIDs)
     }
+
+    /// SF Symbol-naam voor het gekozen menubalk-icoon.
+    var menuBarIconName: String { settingsStore.settings.menuBarIcon.symbolName }
+
+    /// Bonk is gepauzeerd (globaal uitgezet): toont niets en waarschuwt nergens voor.
+    var isPaused: Bool { !settingsStore.settings.globalEnabled }
 
     /// Tekst voor in de menubalk, afhankelijk van de gekozen stijl.
     var menuBarText: String? {
@@ -135,8 +146,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
-        dismissedIDs = Set(UserDefaults.standard.stringArray(forKey: dismissedKey) ?? [])
-        forceShownIDs = Set(UserDefaults.standard.stringArray(forKey: forceShownKey) ?? [])
+        dismissedEnds = Self.loadChoices(forKey: dismissedKey)
+        forceShownEnds = Self.loadChoices(forKey: forceShownKey)
         UNUserNotificationCenter.current().delegate = self
         BannerNotifier.requestAuth(lang: settingsStore.lang)
         hotKey.onTrigger = { [weak self] in self?.openReminderEditor() }
@@ -249,12 +260,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
         let reminders = reminderEvents(now: now)
         let events = (calendarEvents + reminders).sorted { $0.start < $1.start }
 
-        // Opgeslagen keuzes opschonen zodra meetings uit het venster vallen.
-        let ids = Set(events.map { $0.id })
-        let before = (dismissedIDs.count, forceShownIDs.count)
-        dismissedIDs.formIntersection(ids)
-        forceShownIDs.formIntersection(ids)
-        if (dismissedIDs.count, forceShownIDs.count) != before { saveChoices() }
+        // Genegeerde/heractiveerde keuzes onderhouden op basis van de meeting-datum,
+        // niet het opgehaalde venster: ververs de bewaarde einddatum voor meetings
+        // die nu in beeld zijn (vangt ook gemigreerde/verzette meetings op) en gooi
+        // een keuze pas weg als de meeting echt is afgelopen.
+        var choicesChanged = false
+        for event in events {
+            if dismissedEnds[event.id] != nil, dismissedEnds[event.id] != event.end {
+                dismissedEnds[event.id] = event.end; choicesChanged = true
+            }
+            if forceShownEnds[event.id] != nil, forceShownEnds[event.id] != event.end {
+                forceShownEnds[event.id] = event.end; choicesChanged = true
+            }
+        }
+        let prunedDismissed = dismissedEnds.filter { $0.value > now }
+        let prunedForce = forceShownEnds.filter { $0.value > now }
+        if prunedDismissed.count != dismissedEnds.count || prunedForce.count != forceShownEnds.count {
+            choicesChanged = true
+        }
+        dismissedEnds = prunedDismissed
+        forceShownEnds = prunedForce
+        if choicesChanged { saveChoices() }
 
         // Toon de meetings waar een regel op past + alle herinneringen; genegeerde apart.
         let classified = MeetingEngine.visibleEvents(calendarEvents: calendarEvents, reminders: reminders,
@@ -440,6 +466,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
     /// dagvenster (`displayDays`) volledig gevuld kan worden. Minimaal 48u, zodat
     /// meetings net buiten "vandaag" nog op tijd kunnen vuren.
     private func fetchHorizonHours(now: Date) -> Int {
+        // Genoeg vooruit om het ingestelde dagvenster te vullen (minimaal 48u voor
+        // het vuren van meetings net buiten "vandaag"). Het bewaren van genegeerde/
+        // heractiveerde keuzes hangt hier níét van af — dat gaat op meeting-datum
+        // (zie `tick`) — dus dit venster mag rustig met `displayDays` meekrimpen.
         let days = max(1, settingsStore.settings.displayDays)
         let startOfToday = Calendar.current.startOfDay(for: now)
         let windowEnd = Calendar.current.date(byAdding: .day, value: days, to: startOfToday) ?? now
@@ -496,15 +526,37 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
 
     /// Maak een eerder genegeerde meeting (handmatig of via regel) weer actief.
     func unskipMeeting(id: String) {
-        dismissedIDs.remove(id)
-        forceShownIDs.insert(id)   // overschrijft ook een negeer-regel
+        dismissedEnds[id] = nil
+        forceShownEnds[id] = eventEnd(forID: id)   // overschrijft ook een negeer-regel
         saveChoices()
         tick()
     }
 
+    /// Einddatum van een meeting die nu in beeld is, om een keuze mee te bewaren.
+    /// Valt terug op ‘ver in de toekomst’ zodat de keuze niet meteen wordt
+    /// opgeschoond mocht de meeting (zeldzaam) niet gevonden worden.
+    private func eventEnd(forID id: String) -> Date {
+        (upcoming + skipped).first { $0.id == id }?.end ?? .distantFuture
+    }
+
     private func saveChoices() {
-        UserDefaults.standard.set(Array(dismissedIDs), forKey: dismissedKey)
-        UserDefaults.standard.set(Array(forceShownIDs), forKey: forceShownKey)
+        UserDefaults.standard.set(dismissedEnds.mapValues { $0.timeIntervalSince1970 }, forKey: dismissedKey)
+        UserDefaults.standard.set(forceShownEnds.mapValues { $0.timeIntervalSince1970 }, forKey: forceShownKey)
+    }
+
+    /// Laadt bewaarde keuzes (id → einddatum). Migreert het oude `[String]`-formaat:
+    /// datum onbekend → ver in de toekomst, zodat bestaande keuzes niet meteen
+    /// worden opgeschoond (ze krijgen hun echte einddatum zodra de meeting weer in
+    /// beeld komt).
+    private static func loadChoices(forKey key: String) -> [String: Date] {
+        let d = UserDefaults.standard
+        if let raw = d.dictionary(forKey: key) {
+            return raw.compactMapValues { ($0 as? Double).map(Date.init(timeIntervalSince1970:)) }
+        }
+        if let arr = d.stringArray(forKey: key) {
+            return Dictionary(uniqueKeysWithValues: arr.map { ($0, Date.distantFuture) })
+        }
+        return [:]
     }
 
     private func dismissEvent(_ event: UpcomingEvent) {
@@ -520,8 +572,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
             tick()
             return
         }
-        dismissedIDs.insert(id)
-        forceShownIDs.remove(id)
+        dismissedEnds[id] = eventEnd(forID: id)
+        forceShownEnds[id] = nil
         saveChoices()
         tick()
     }
@@ -583,6 +635,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
 
     /// Opent een los venster om snel een herinnering toe te voegen (vanuit het menu).
     func openReminderEditor() {
+        // Geen herinneringen toevoegen als Bonk uitstaat (ook niet via de sneltoets).
+        guard settingsStore.settings.globalEnabled else { return }
         let cal = Calendar.current
         let soon = cal.date(byAdding: .minute, value: 30, to: Date()) ?? Date()
         let date = cal.date(bySetting: .second, value: 0, of: soon) ?? soon

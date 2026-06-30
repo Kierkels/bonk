@@ -22,12 +22,57 @@ enum MenuBarStyle: String, Codable, CaseIterable, Identifiable {
     }
 }
 
+/// Welk symbool Bonk in de menubalk toont (alternatieven op de bel).
+enum MenuBarIcon: String, Codable, CaseIterable, Identifiable {
+    case bell
+    case bellBadge
+    case burst
+    case exclamation
+    case alarm
+    case calendar
+    case calendarClock
+    case clock
+    case sparkles
+
+    var id: String { rawValue }
+
+    /// SF Symbol-naam voor dit icoon.
+    var symbolName: String {
+        switch self {
+        case .bell:          return "bell.fill"
+        case .bellBadge:     return "bell.badge.fill"
+        case .burst:         return "burst.fill"
+        case .exclamation:   return "exclamationmark.bubble.fill"
+        case .alarm:         return "alarm.fill"
+        case .calendar:      return "calendar"
+        case .calendarClock: return "calendar.badge.clock"
+        case .clock:         return "clock.fill"
+        case .sparkles:      return "sparkles"
+        }
+    }
+
+    func label(_ lang: Lang) -> String {
+        switch self {
+        case .bell:          return L("Bel", "Bell", lang)
+        case .bellBadge:     return L("Bel met stip", "Bell with dot", lang)
+        case .burst:         return L("Knal (logo-stijl)", "Burst (logo style)", lang)
+        case .exclamation:   return L("Uitroepteken", "Exclamation", lang)
+        case .alarm:         return L("Wekker", "Alarm", lang)
+        case .calendar:      return L("Agenda", "Calendar", lang)
+        case .calendarClock: return L("Agenda met klok", "Calendar with clock", lang)
+        case .clock:         return L("Klok", "Clock", lang)
+        case .sparkles:      return L("Sterretjes", "Sparkles", lang)
+        }
+    }
+}
+
 struct AppSettings: Codable {
     var rules: [MeetingRule]
     var enabledCalendarIDs: Set<String>   // leeg = alle agenda's
     var globalEnabled: Bool
     var appearances: [OverlayAppearance]  // herbruikbare weergave-presets
     var menuBarStyle: MenuBarStyle = .countdown
+    var menuBarIcon: MenuBarIcon = .bell  // welk symbool de menubalk toont
     var displayDays: Int = 1              // hoeveel dagen het menu toont; 1 = alleen vandaag
     var maxMeetings: Int? = nil           // optioneel maximum aantal agenda-meetings (nil = alle)
     var menuBarOnlyToday: Bool = false    // menubalk-tekst alleen tonen als de eerstvolgende meeting vandaag is
@@ -82,7 +127,7 @@ struct AppSettings: Codable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case rules, enabledCalendarIDs, globalEnabled, appearances, menuBarStyle, displayDays, maxMeetings, menuBarOnlyToday, showCalendarItemLink, quickReminderShortcut, reminders, calendarColors, calendarsMigrated, languageOverride, appearanceOverride
+        case rules, enabledCalendarIDs, globalEnabled, appearances, menuBarStyle, menuBarIcon, displayDays, maxMeetings, menuBarOnlyToday, showCalendarItemLink, quickReminderShortcut, reminders, calendarColors, calendarsMigrated, languageOverride, appearanceOverride
         case menuBarHighlightEnabled, menuBarHighlightMinutes, menuBarHighlightColorMode, menuBarHighlightColorHex
         case reminderAlertStyle, reminderLeadMinutes, reminderAppearanceID, reminderSound, reminderNotifyWhenLocked, reminderRepeatSound, reminderSoundMaxSeconds, reminderOverrideMute
     }
@@ -98,6 +143,7 @@ struct AppSettings: Codable {
         enabledCalendarIDs = try c.decodeIfPresent(Set<String>.self, forKey: .enabledCalendarIDs) ?? []
         globalEnabled = try c.decodeIfPresent(Bool.self, forKey: .globalEnabled) ?? true
         menuBarStyle = try c.decodeIfPresent(MenuBarStyle.self, forKey: .menuBarStyle) ?? .countdown
+        menuBarIcon = try c.decodeIfPresent(MenuBarIcon.self, forKey: .menuBarIcon) ?? .bell
         displayDays = try c.decodeIfPresent(Int.self, forKey: .displayDays) ?? 1
         maxMeetings = try c.decodeIfPresent(Int.self, forKey: .maxMeetings)
         menuBarOnlyToday = try c.decodeIfPresent(Bool.self, forKey: .menuBarOnlyToday) ?? false

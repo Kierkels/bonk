@@ -100,20 +100,23 @@ struct MenuView: View {
 
     private var footer: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Button {
-                app.openReminderEditor()
-            } label: {
-                HStack(spacing: 8) {
-                    Label(L("Herinnering toevoegen…", "Add reminder…", lang), systemImage: "alarm")
-                    if let shortcut = store.settings.quickReminderShortcut {
-                        Spacer(minLength: 8)
-                        Text(shortcut.displayString)
-                            .font(.callout)
-                            .foregroundStyle(.secondary)
+            // Herinneringen toevoegen kan alleen als Bonk aanstaat.
+            if store.settings.globalEnabled {
+                Button {
+                    app.openReminderEditor()
+                } label: {
+                    HStack(spacing: 8) {
+                        Label(L("Herinnering toevoegen…", "Add reminder…", lang), systemImage: "alarm")
+                        if let shortcut = store.settings.quickReminderShortcut {
+                            Spacer(minLength: 8)
+                            Text(shortcut.displayString)
+                                .font(.callout)
+                                .foregroundStyle(.secondary)
+                        }
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .contentShape(Rectangle())
             }
 
             Button { openSettingsReliably() } label: {
@@ -136,7 +139,7 @@ struct MenuView: View {
 
     private var header: some View {
         HStack(spacing: 10) {
-            Image(systemName: "bell.badge.fill").foregroundStyle(accent)
+            Image(systemName: store.settings.menuBarIcon.symbolName).foregroundStyle(accent)
             Text("Bonk").font(.headline)
             Spacer()
             // Altijd bereikbaar tandwiel — ook als de meetinglijst lang is.
@@ -187,19 +190,18 @@ struct MenuView: View {
             ? L("alleen vandaag", "today only", lang)
             : L("komende \(days) dagen", "next \(days) days", lang)
         return HStack(alignment: .top, spacing: 10) {
-            Image(systemName: enabled ? "calendar" : "moon.zzz.fill")
-                .font(.title3).foregroundStyle(.secondary)
             VStack(alignment: .leading, spacing: 2) {
                 Text(enabled
                      ? L("Geen meetings op komst", "No meetings coming up", lang)
-                     : L("Bonk staat uit", "Bonk is off", lang))
+                     : L("Bonk is gepauzeerd", "Bonk is paused", lang))
                     .foregroundStyle(.secondary)
-                if enabled {
-                    Text(L("Misschien door je filters — weergave (\(window)), agenda's of regels.",
-                           "Maybe due to your filters — display (\(window)), calendars or rules.", lang))
-                        .font(.caption2).foregroundStyle(.tertiary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
+                Text(enabled
+                     ? L("Misschien door je filters — weergave (\(window)), agenda's of regels.",
+                         "Maybe due to your filters — display (\(window)), calendars or rules.", lang)
+                     : L("Toont geen waarschuwingen of meetings tot je Bonk weer aanzet.",
+                         "Won't show any alerts or meetings until you switch Bonk back on.", lang))
+                    .font(.caption2).foregroundStyle(.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 0)
         }
