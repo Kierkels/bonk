@@ -9,7 +9,11 @@
 <link rel="alternate" hreflang="nl" href="https://bonk.kierkels.app/?lang=nl">
 <link rel="alternate" hreflang="en" href="https://bonk.kierkels.app/?lang=en">
 <link rel="alternate" hreflang="x-default" href="https://bonk.kierkels.app/">
-<link rel="icon" type="image/png" href="assets/icon-256.png">
+<!-- Favicons: /favicon.ico op de root (Google's eerste vindplaats) + 48px-veelvouden (Google-eis). -->
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" type="image/png" sizes="96x96" href="assets/favicon-96.png">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/favicon-192.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 
 <!-- Open Graph (WhatsApp, Slack, Facebook, LinkedIn…) -->
 <meta property="og:type" content="website">
@@ -70,6 +74,14 @@
     "Multi-monitor support",
     "Dutch and English, light and dark mode"
   ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "Bonk",
+  "url": "https://bonk.kierkels.app/"
 }
 </script>
 </head>
