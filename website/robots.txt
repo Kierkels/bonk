@@ -1,0 +1,5 @@
+# Bonk — iedereen welkom, ook AI-crawlers (GPTBot, ClaudeBot, PerplexityBot…)
+User-agent: *
+Allow: /
+
+Sitemap: https://bonk.kierkels.app/sitemap.xml

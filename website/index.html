@@ -6,6 +6,9 @@
 <title>Bonk — mis nooit meer een meeting</title>
 <meta name="description" content="Bonk waarschuwt je vlak voor een meeting met een schermvullende melding of een subtiele pill — met één klik joinen, snoozen of negeren. Slimme regels per agenda, eigen stijlen en custom herinneringen. Gratis en privacyvriendelijk.">
 <link rel="canonical" href="https://bonk.kierkels.app/">
+<link rel="alternate" hreflang="nl" href="https://bonk.kierkels.app/?lang=nl">
+<link rel="alternate" hreflang="en" href="https://bonk.kierkels.app/?lang=en">
+<link rel="alternate" hreflang="x-default" href="https://bonk.kierkels.app/">
 <link rel="icon" type="image/png" href="assets/icon-256.png">
 
 <!-- Open Graph (WhatsApp, Slack, Facebook, LinkedIn…) -->
@@ -32,6 +35,42 @@
 
 <meta name="theme-color" content="#7c3aed">
 <link rel="stylesheet" href="styles.css">
+
+<!-- Structured data: helpt Google (rich results) én AI-assistenten de app te begrijpen. -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Bonk",
+  "operatingSystem": "macOS 14.0 or later",
+  "applicationCategory": "BusinessApplication",
+  "applicationSubCategory": "Calendar & meeting alerts",
+  "description": "Free macOS menu bar app that makes sure you never miss a meeting: a full-screen alert (or subtle pill) right before every calendar event, with one-click join for Google Meet, Zoom, Microsoft Teams and Webex. Smart rules per calendar, custom reminders, alarm sounds, multi-monitor support. Privacy-friendly: reads your calendar locally via EventKit, no account, no tracking.",
+  "inLanguage": ["nl", "en"],
+  "url": "https://bonk.kierkels.app/",
+  "downloadUrl": "https://github.com/Kierkels/bonk/releases/latest",
+  "softwareRequirements": "macOS 14 (Sonoma) or newer",
+  "image": "https://bonk.kierkels.app/assets/icon-256.png",
+  "screenshot": [
+    "https://bonk.kierkels.app/assets/hero-shot.png",
+    "https://bonk.kierkels.app/assets/menu-shot.png"
+  ],
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" },
+  "author": { "@type": "Person", "name": "Roland Kierkels" },
+  "featureList": [
+    "Full-screen meeting alert that appears over everything, even full-screen apps",
+    "Subtle pill notification with live countdown as an alternative",
+    "One-click join for Google Meet, Zoom, Microsoft Teams and Webex",
+    "Smart alert rules: filter by title, calendar, weekday or RSVP status",
+    "Custom reminders outside your calendar",
+    "Menu bar countdown to your next meeting",
+    "Repeating alarm sound, works even when your Mac is muted or locked",
+    "Works with Google Calendar, iCloud, Outlook/Exchange via macOS calendar sync",
+    "Multi-monitor support",
+    "Dutch and English, light and dark mode"
+  ]
+}
+</script>
 </head>
 <body>
 
@@ -45,6 +84,7 @@
       <a href="#features" data-i18n="nav.features">Functies</a>
       <a href="#instellingen" data-i18n="nav.settings">Instellingen</a>
       <a href="#gratis" data-i18n="nav.free">Gratis</a>
+      <a href="#faq" data-i18n="nav.faq">FAQ</a>
       <div class="lang-switch" role="group" aria-label="Taal / Language">
         <button type="button" data-lang-btn="nl">NL</button>
         <button type="button" data-lang-btn="en">EN</button>
@@ -312,6 +352,53 @@
   </div>
 </section>
 
+<!-- FAQ -->
+<section id="faq" class="section">
+  <div class="container narrow">
+    <h2 class="section-title" data-i18n="faq.title">Veelgestelde vragen</h2>
+
+    <div class="faq-list">
+      <details class="faq-item">
+        <summary data-i18n="faq1.q">Hoe zorg ik dat ik nooit meer een Zoom-, Teams- of Google Meet-meeting mis op mijn Mac?</summary>
+        <p data-i18n="faq1.a">Bonk leest je agenda en toont vlak vóór elke meeting een schermvullende waarschuwing
+        (of een subtiele pill) met een live aftelteller en een Joinen-knop — ook over fullscreen-apps heen.
+        Desnoods met een herhalend alarmgeluid, zelfs als je Mac op mute staat of vergrendeld is.</p>
+      </details>
+
+      <details class="faq-item">
+        <summary data-i18n="faq2.q">Werkt Bonk met Google Calendar, Outlook en iCloud?</summary>
+        <p data-i18n="faq2.a">Ja. Bonk gebruikt de agenda's die je Mac al synchroniseert — Google Calendar, iCloud,
+        Outlook/Exchange en elke andere agenda in de macOS Agenda-app. Geen apart account of koppeling nodig.</p>
+      </details>
+
+      <details class="faq-item">
+        <summary data-i18n="faq3.q">Wat is het verschil met de standaard agendameldingen van macOS?</summary>
+        <p data-i18n="faq3.a">Een macOS-notificatie is een klein hoekbanner dat zó weer weg is. Bonk maakt er een
+        melding van die je écht niet mist: schermvullend of als pill boven aan je scherm, met joinen in één klik,
+        snooze, alarmgeluid en slimme regels per agenda, titel, dag of RSVP-status.</p>
+      </details>
+
+      <details class="faq-item">
+        <summary data-i18n="faq4.q">Is Bonk echt gratis?</summary>
+        <p data-i18n="faq4.a">Ja — volledig gratis, zonder advertenties, account of in-app aankopen. Je downloadt
+        de app rechtstreeks via GitHub Releases.</p>
+      </details>
+
+      <details class="faq-item">
+        <summary data-i18n="faq5.q">Op welke Macs werkt Bonk?</summary>
+        <p data-i18n="faq5.a">Bonk vereist macOS 14 (Sonoma) of nieuwer. Het is een lichte menubalk-app:
+        geen Dock-icoon, start automatisch bij inloggen en gebruikt nauwelijks geheugen.</p>
+      </details>
+
+      <details class="faq-item">
+        <summary data-i18n="faq6.q">Is Bonk veilig en privacyvriendelijk?</summary>
+        <p data-i18n="faq6.a">Je agenda wordt lokaal op je Mac gelezen via EventKit — er gaat niets naar een server.
+        Geen tracking, geen analytics, geen verzamelde gegevens.</p>
+      </details>
+    </div>
+  </div>
+</section>
+
 <!-- DOWNLOAD -->
 <section id="download" class="section download">
   <div class="container narrow center">
@@ -338,6 +425,7 @@ const I18N = {
   "nav.features": { nl: "Functies", en: "Features" },
   "nav.settings": { nl: "Instellingen", en: "Settings" },
   "nav.free": { nl: "Gratis", en: "Free" },
+  "nav.faq": { nl: "FAQ", en: "FAQ" },
   "nav.download": { nl: "Download", en: "Download" },
   "cta.download": { nl: "Download voor macOS", en: "Download for macOS" },
 
@@ -506,6 +594,47 @@ const I18N = {
   },
   "dl.note": { nl: "Gratis · privacyvriendelijk · macOS 14+", en: "Free · privacy-friendly · macOS 14+" },
 
+  "faq.title": { nl: "Veelgestelde vragen", en: "Frequently asked questions" },
+  "faq1.q": {
+    nl: "Hoe zorg ik dat ik nooit meer een Zoom-, Teams- of Google Meet-meeting mis op mijn Mac?",
+    en: "How do I never miss a Zoom, Teams or Google Meet meeting on my Mac?"
+  },
+  "faq1.a": {
+    nl: "Bonk leest je agenda en toont vlak vóór elke meeting een schermvullende waarschuwing (of een subtiele pill) met een live aftelteller en een Joinen-knop — ook over fullscreen-apps heen. Desnoods met een herhalend alarmgeluid, zelfs als je Mac op mute staat of vergrendeld is.",
+    en: "Bonk reads your calendar and shows a full-screen alert (or a subtle pill) right before every meeting, with a live countdown and a Join button — even over full-screen apps. Optionally with a repeating alarm sound, even when your Mac is muted or locked."
+  },
+  "faq2.q": {
+    nl: "Werkt Bonk met Google Calendar, Outlook en iCloud?",
+    en: "Does Bonk work with Google Calendar, Outlook and iCloud?"
+  },
+  "faq2.a": {
+    nl: "Ja. Bonk gebruikt de agenda's die je Mac al synchroniseert — Google Calendar, iCloud, Outlook/Exchange en elke andere agenda in de macOS Agenda-app. Geen apart account of koppeling nodig.",
+    en: "Yes. Bonk uses the calendars your Mac already syncs — Google Calendar, iCloud, Outlook/Exchange and any other calendar in the macOS Calendar app. No separate account or integration needed."
+  },
+  "faq3.q": {
+    nl: "Wat is het verschil met de standaard agendameldingen van macOS?",
+    en: "How is this different from the default macOS calendar notifications?"
+  },
+  "faq3.a": {
+    nl: "Een macOS-notificatie is een klein hoekbanner dat zó weer weg is. Bonk maakt er een melding van die je écht niet mist: schermvullend of als pill boven aan je scherm, met joinen in één klik, snooze, alarmgeluid en slimme regels per agenda, titel, dag of RSVP-status.",
+    en: "A macOS notification is a small corner banner that's gone before you know it. Bonk turns it into an alert you truly can't miss: full-screen or as a pill at the top of your screen, with one-click join, snooze, an alarm sound and smart rules per calendar, title, weekday or RSVP status."
+  },
+  "faq4.q": { nl: "Is Bonk echt gratis?", en: "Is Bonk really free?" },
+  "faq4.a": {
+    nl: "Ja — volledig gratis, zonder advertenties, account of in-app aankopen. Je downloadt de app rechtstreeks via GitHub Releases.",
+    en: "Yes — completely free, with no ads, account or in-app purchases. You download the app directly from GitHub Releases."
+  },
+  "faq5.q": { nl: "Op welke Macs werkt Bonk?", en: "Which Macs does Bonk run on?" },
+  "faq5.a": {
+    nl: "Bonk vereist macOS 14 (Sonoma) of nieuwer. Het is een lichte menubalk-app: geen Dock-icoon, start automatisch bij inloggen en gebruikt nauwelijks geheugen.",
+    en: "Bonk requires macOS 14 (Sonoma) or newer. It's a lightweight menu bar app: no Dock icon, starts at login and uses barely any memory."
+  },
+  "faq6.q": { nl: "Is Bonk veilig en privacyvriendelijk?", en: "Is Bonk safe and privacy-friendly?" },
+  "faq6.a": {
+    nl: "Je agenda wordt lokaal op je Mac gelezen via EventKit — er gaat niets naar een server. Geen tracking, geen analytics, geen verzamelde gegevens.",
+    en: "Your calendar is read locally on your Mac via EventKit — nothing goes to a server. No tracking, no analytics, no data collection."
+  },
+
   "doc.title": { nl: "Bonk — mis nooit meer een meeting", en: "Bonk — never miss a meeting" },
   "doc.desc": {
     nl: "Bonk waarschuwt je vlak voor een meeting met een schermvullende melding of notificatie — met één klik joinen, snoozen of negeren. Slimme regels per agenda, eigen stijlen en custom herinneringen. Gratis en privacyvriendelijk.",
@@ -529,6 +658,11 @@ function applyLang(lang) {
   if (I18N["doc.title"]) document.title = I18N["doc.title"][lang];
   var desc = document.querySelector('meta[name="description"]');
   if (desc && I18N["doc.desc"]) desc.setAttribute("content", I18N["doc.desc"][lang]);
+  // Canonical volgt de gerenderde taal (?lang=nl / ?lang=en), zodat Google beide
+  // taalversies deterministisch indexeert — de kale URL auto-detecteert immers en
+  // rendert voor crawlers (en-US) altijd Engels. Zie ook de hreflang-links.
+  var canonical = document.querySelector('link[rel="canonical"]');
+  if (canonical) canonical.setAttribute("href", "https://bonk.kierkels.app/?lang=" + lang);
   document.querySelectorAll("[data-lang-btn]").forEach(function (b) {
     b.classList.toggle("active", b.getAttribute("data-lang-btn") === lang);
     b.setAttribute("aria-pressed", b.getAttribute("data-lang-btn") === lang ? "true" : "false");
@@ -537,9 +671,14 @@ function applyLang(lang) {
 }
 
 (function () {
+  // ?lang=nl|en in de URL wint (deelbare/indexeerbare taalversie), daarna de
+  // opgeslagen keuze, daarna de browsertaal.
+  var urlLang = null;
+  try { urlLang = new URLSearchParams(location.search).get("lang"); } catch (e) {}
+  if (urlLang !== "nl" && urlLang !== "en") urlLang = null;
   var saved = null;
   try { saved = localStorage.getItem("bonk-lang"); } catch (e) {}
-  var lang = saved || ((navigator.language || "nl").toLowerCase().indexOf("en") === 0 ? "en" : "nl");
+  var lang = urlLang || saved || ((navigator.language || "nl").toLowerCase().indexOf("en") === 0 ? "en" : "nl");
   document.querySelectorAll("[data-lang-btn]").forEach(function (b) {
     b.addEventListener("click", function () { applyLang(b.getAttribute("data-lang-btn")); });
   });

@@ -175,6 +175,24 @@ a { color: inherit; text-decoration: none; }
 .download .btn { margin-top: 8px; }
 .download .cta-note { display: block; margin-top: 12px; }
 
+/* FAQ */
+.faq-list { display: flex; flex-direction: column; gap: 12px; }
+.faq-item {
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 4px 22px;
+}
+.faq-item summary {
+  cursor: pointer; font-weight: 600; font-size: 1.05rem; padding: 16px 0;
+  list-style: none; position: relative; padding-right: 32px;
+}
+.faq-item summary::-webkit-details-marker { display: none; }
+.faq-item summary::after {
+  content: "+"; position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+  color: var(--violet); font-size: 1.4rem; font-weight: 400; transition: transform .15s ease;
+}
+.faq-item[open] summary::after { content: "–"; }
+.faq-item p { margin: 0 0 18px; color: var(--slate); }
+
 /* Footer */
 .footer { border-top: 1px solid var(--line); padding: 28px 0; background: var(--bg-soft); }
 .footer-inner { display: flex; align-items: center; justify-content: space-between; }
