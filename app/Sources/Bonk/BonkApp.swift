@@ -46,6 +46,10 @@ private struct MenuBarLabel: View {
                 Image(systemName: app.menuBarIconName)
                 Text(text)
             }
+        } else if app.nextEvent == nil {
+            // Geen meetings meer op komst: het icoon gedimd (zelfde lichtheid als
+            // gepauzeerd, maar zonder pauze-badge). Idem template-NSImage.
+            Image(nsImage: MenuBarLabel.renderDimmed(icon: app.menuBarIconName))
         } else {
             Image(systemName: app.menuBarIconName)
         }
@@ -66,7 +70,14 @@ private struct MenuBarLabel: View {
     /// NSImage, zodat de menubalk 'm netjes meekleurt in licht/donker.
     @MainActor
     private static func renderPaused(icon: String) -> NSImage {
-        let renderer = ImageRenderer(content: MenuBarPausedContent(icon: icon))
+        renderDimmed(icon: icon, showBadge: true)
+    }
+
+    /// Rendert het gekozen icoon enkel gedimd (geen pauze-badge) naar een template-
+    /// NSImage — gebruikt wanneer er geen meetings meer op komst zijn.
+    @MainActor
+    private static func renderDimmed(icon: String, showBadge: Bool = false) -> NSImage {
+        let renderer = ImageRenderer(content: MenuBarPausedContent(icon: icon, showBadge: showBadge))
         renderer.scale = NSScreen.main?.backingScaleFactor ?? 2
         guard let image = renderer.nsImage else { return NSImage() }
         image.isTemplate = true
@@ -74,18 +85,22 @@ private struct MenuBarLabel: View {
     }
 }
 
-/// Het gepauzeerde menubalk-icoon: het gekozen symbool gedimd met een pauze-badge
-/// rechtsonder. Wat extra padding zodat de badge niet wordt afgeknipt.
+/// Het gedimde menubalk-icoon: het gekozen symbool op 45%, optioneel met een
+/// pauze-badge rechtsonder (gepauzeerd). Wat extra padding zodat de badge niet
+/// wordt afgeknipt.
 private struct MenuBarPausedContent: View {
     let icon: String
+    var showBadge: Bool = false
 
     var body: some View {
         Image(systemName: icon)
             .font(.system(size: 13, weight: .regular))
             .opacity(0.45)
             .overlay(alignment: .bottomTrailing) {
-                Image(systemName: "pause.circle.fill")
-                    .font(.system(size: 8, weight: .bold))
+                if showBadge {
+                    Image(systemName: "pause.circle.fill")
+                        .font(.system(size: 8, weight: .bold))
+                }
             }
             .padding(1)
     }

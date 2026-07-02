@@ -62,7 +62,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
         if settingsStore.settings.menuBarOnlyToday,
            !Calendar.current.isDateInToday(n.start) { return nil }
 
-        let cd = shortCountdown(n.start.timeIntervalSinceNow)
+        let cd = shortCountdown(n.start)
         let time = menuBarTime(n.start)
 
         // Meerdere meetings tegelijk → toon aantal i.p.v. één titel.
@@ -117,14 +117,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
         title.count > max ? String(title.prefix(max - 1)) + "…" : title
     }
 
-    private func shortCountdown(_ seconds: TimeInterval) -> String {
-        let lang = settingsStore.lang
-        if seconds <= 0 { return L("bezig", "now", lang) }
-        if seconds < 60 { return L("nu", "now", lang) }
-        let m = Int((seconds / 60).rounded(.down))
-        if m >= 1440 { return L("in \(m / 1440)d", "in \(m / 1440)d", lang) }
-        if m >= 60 { return L("in \(m / 60)u", "in \(m / 60)h", lang) }
-        return L("in \(m)m", "in \(m)m", lang)
+    private func shortCountdown(_ date: Date) -> String {
+        MeetingEngine.compactCountdown(to: date, now: Date(), lang: settingsStore.lang)
     }
 
     private func menuBarTime(_ date: Date) -> String {

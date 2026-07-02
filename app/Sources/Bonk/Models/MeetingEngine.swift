@@ -218,4 +218,37 @@ enum MeetingEngine {
     static func selectedCalendarIDs(available: [String], enabled: Set<String>) -> [String] {
         available.filter { enabled.contains($0) }
     }
+
+    // MARK: - Compacte aftelling (menubalk)
+
+    /// Korte aftel-tekst voor het menubalk-label:
+    ///  - al bezig (`date ≤ now`) → "bezig"
+    ///  - < 1 min → "nu"
+    ///  - < 1 uur → minuten ("in 45m")
+    ///  - < 1 dag → uren én minuten, precies en nul-gevuld ("in 1u33", "in 12u05");
+    ///    "in 2u" als het exact op het uur valt
+    ///  - een andere kalenderdag → "morgen" / "over N dagen"
+    ///
+    /// Bewust dag-woorden op basis van de kálenderdag (niet 24u-blokken), maar pas
+    /// vanaf een volle dag: zo wordt een afspraak 2 min ná middernacht "in 2m" en
+    /// niet "morgen", terwijl een afspraak morgenochtend wel "morgen" heet.
+    static func compactCountdown(to date: Date, now: Date,
+                                 calendar: Calendar = .current, lang: Lang) -> String {
+        let seconds = date.timeIntervalSince(now)
+        if seconds <= 0 { return L("bezig", "now", lang) }
+        if seconds < 60 { return L("nu", "now", lang) }
+        if seconds < 86_400 {
+            let m = Int((seconds / 60).rounded(.down))
+            if m < 60 { return L("in \(m)m", "in \(m)m", lang) }
+            let h = m / 60, rem = m % 60
+            if rem == 0 { return L("in \(h)u", "in \(h)h", lang) }
+            let mm = String(format: "%02d", rem)
+            return L("in \(h)u\(mm)", "in \(h)h\(mm)", lang)
+        }
+        let dayDiff = calendar.dateComponents([.day],
+                                              from: calendar.startOfDay(for: now),
+                                              to: calendar.startOfDay(for: date)).day ?? 1
+        if dayDiff <= 1 { return L("morgen", "tomorrow", lang) }
+        return L("over \(dayDiff) dagen", "in \(dayDiff) days", lang)
+    }
 }

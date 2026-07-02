@@ -329,4 +329,57 @@ final class MeetingEngineTests: XCTestCase {
                                               snoozeUntil: now.addingTimeInterval(-200), alreadyFired: true)
         XCTAssertEqual(decision, .snoozeEnded(fire: true))
     }
+
+    // MARK: Compacte aftelling (menubalk)
+
+    /// "nu" op UTC-middernacht zodat dag-grenzen deterministisch zijn (hergebruikt `utc`).
+    private func cdNow() -> Date {
+        utc.date(from: DateComponents(year: 2026, month: 7, day: 1, hour: 0, minute: 0))!
+    }
+    private func compact(_ interval: TimeInterval, _ lang: Lang = .nl) -> String {
+        let now = cdNow()
+        return MeetingEngine.compactCountdown(to: now.addingTimeInterval(interval),
+                                              now: now, calendar: utc, lang: lang)
+    }
+
+    func testCompactCountdownMinutesAndNow() {
+        XCTAssertEqual(compact(-30), "bezig")
+        XCTAssertEqual(compact(30), "nu")
+        XCTAssertEqual(compact(45 * 60), "in 45m")
+    }
+
+    /// De aanleiding: 1u33m mag niet naar "in 1u" afkappen.
+    func testCompactCountdownShowsHoursAndMinutes() {
+        XCTAssertEqual(compact(93 * 60), "in 1u33")
+        XCTAssertEqual(compact(93 * 60, .en), "in 1h33")
+        // Minuten nul-gevuld, zodat "1u03" niet als "1u30" leest.
+        XCTAssertEqual(compact((60 + 3) * 60), "in 1u03")
+    }
+
+    func testCompactCountdownExactHourHasNoMinutes() {
+        XCTAssertEqual(compact(2 * 3600), "in 2u")
+        XCTAssertEqual(compact(2 * 3600, .en), "in 2h")
+    }
+
+    /// Uren+minuten blijven precies tot vlak onder een dag (geen afronding meer).
+    func testCompactCountdownPreciseUpToADay() {
+        XCTAssertEqual(compact((4 * 60 + 10) * 60), "in 4u10")
+        XCTAssertEqual(compact((12 * 60 + 5) * 60), "in 12u05")
+        XCTAssertEqual(compact((23 * 60 + 59) * 60), "in 23u59")
+    }
+
+    func testCompactCountdownDaysUseWords() {
+        // Zelfde tijdstip morgen / overmorgen (UTC-middernacht → hele dagen).
+        XCTAssertEqual(compact(24 * 3600), "morgen")
+        XCTAssertEqual(compact(24 * 3600, .en), "tomorrow")
+        XCTAssertEqual(compact(48 * 3600), "over 2 dagen")
+        XCTAssertEqual(compact(72 * 3600, .en), "in 3 days")
+    }
+
+    /// Vlak ná middernacht (< 1 dag) blijft het gewoon minuten, geen "morgen".
+    func testCompactCountdownAcrossMidnightStaysPrecise() {
+        let now = utc.date(from: DateComponents(year: 2026, month: 7, day: 1, hour: 23, minute: 58))!
+        let target = now.addingTimeInterval(4 * 60)   // 00:02 de volgende dag
+        XCTAssertEqual(MeetingEngine.compactCountdown(to: target, now: now, calendar: utc, lang: .nl), "in 4m")
+    }
 }

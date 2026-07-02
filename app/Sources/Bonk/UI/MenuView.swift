@@ -1,4 +1,23 @@
 import SwiftUI
+import AppKit
+
+/// Een effen achtergrondlaag die NIET door de vibrancy van het menu-venster
+/// halftransparant wordt gemaakt (een SwiftUI `Color` wél). Layer-backed AppKit-
+/// view → kleurt exact op de gevraagde dekking, bovenop het systeem-blur.
+private struct MenuBackdrop: NSViewRepresentable {
+    var opacity: Double
+
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        view.wantsLayer = true
+        return view
+    }
+
+    func updateNSView(_ view: NSView, context: Context) {
+        view.layer?.backgroundColor = NSColor.windowBackgroundColor
+            .withAlphaComponent(opacity).cgColor
+    }
+}
 
 /// De inhoud van het menubar-popover.
 struct MenuView: View {
@@ -51,6 +70,10 @@ struct MenuView: View {
         .buttonStyle(.plain)
         .padding(14)
         .frame(width: 300)
+        // Instelbare dekking: een effen laag bovenop het systeem-blur (layer-backed,
+        // dus niet door vibrancy verzwakt). 1 = volledig dekkend; lager laat steeds
+        // meer van de doorschijnende achtergrond zien. Ronde vensterhoeken maskeren het.
+        .background(MenuBackdrop(opacity: store.settings.menuOpacity).ignoresSafeArea())
         // MenuBarExtra(.window) groeit wel mee maar krimpt niet betrouwbaar als de
         // inhoud kleiner wordt (bv. 3 dagen → alleen vandaag) → te groot/glitcherig
         // venster. `fixedSize` laat de hosting-view z'n ideale hoogte gebruiken, en
@@ -100,23 +123,35 @@ struct MenuView: View {
 
     private var footer: some View {
         VStack(alignment: .leading, spacing: 12) {
-            // Herinneringen toevoegen kan alleen als Bonk aanstaat.
+            // Herinneringen toevoegen kan alleen als Bonk aanstaat. Prominente,
+            // getinte actieknop — niet zomaar een tekstregel zoals Instellingen/Afsluiten.
             if store.settings.globalEnabled {
                 Button {
                     app.openReminderEditor()
                 } label: {
                     HStack(spacing: 8) {
-                        Label(L("Herinnering toevoegen…", "Add reminder…", lang), systemImage: "alarm")
+                        Image(systemName: store.settings.menuBarIcon.symbolName)
+                        Text(L("Herinnering toevoegen…", "Add reminder…", lang))
+                            .fontWeight(.semibold)
                         if let shortcut = store.settings.quickReminderShortcut {
                             Spacer(minLength: 8)
                             Text(shortcut.displayString)
-                                .font(.callout)
                                 .foregroundStyle(.secondary)
                         }
                     }
+                    .font(.callout)
+                    .foregroundStyle(.primary)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.vertical, 8)
+                    .padding(.horizontal, 11)
+                    .background(Color.primary.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8).strokeBorder(Color.primary.opacity(0.18), lineWidth: 1)
+                    )
                     .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
+                .help(L("Herinnering toevoegen…", "Add reminder…", lang))
             }
 
             Button { openSettingsReliably() } label: {
@@ -132,7 +167,7 @@ struct MenuView: View {
     /// Verandert zodra de inhoud van hoogte kan wijzigen, zodat het popover-venster
     /// opnieuw wordt opgemeten (zie `.id` hierboven).
     private var layoutKey: String {
-        "\(calendar.authorized)|\(app.upcoming.count)|\(app.skipped.count)|\(groupedByDay(laterMeetings).count)|\(updates.availableVersion != nil)|\(expandedIDs.sorted().joined(separator: ","))"
+        "\(calendar.authorized)|\(app.upcoming.count)|\(app.skipped.count)|\(groupedByDay(laterMeetings).count)|\(updates.availableVersion != nil)|\(expandedIDs.sorted().joined(separator: ","))|\(store.settings.menuCollapsedSections.sorted().joined(separator: ","))"
     }
 
     // MARK: Onderdelen
@@ -352,28 +387,29 @@ struct MenuView: View {
         // alleen het tijdstip.
         let groups = groupedByDay(laterMeetings)
         return VStack(alignment: .leading, spacing: 14) {
-            Text(L("DAARNA", "LATER", lang))
-                .font(.caption2.weight(.bold)).tracking(0.6)
-                .foregroundStyle(.secondary)
+            sectionHeader(L("DAARNA", "LATER", lang), key: Self.laterSectionKey,
+                          count: laterMeetings.count)
 
             // Elke dag krijgt een eigen kaartje, met het dag-kopje erboven.
-            ForEach(Array(groups.enumerated()), id: \.element.key) { _, group in
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(dayHeaderLabel(group.key))
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(.secondary)
+            if !isCollapsed(Self.laterSectionKey) {
+                ForEach(Array(groups.enumerated()), id: \.element.key) { _, group in
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(dayHeaderLabel(group.key))
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.secondary)
 
-                    VStack(spacing: 0) {
-                        ForEach(Array(group.events.enumerated()), id: \.element.id) { eventIndex, event in
-                            laterRow(event)
-                            if eventIndex < group.events.count - 1 {
-                                Divider().opacity(0.4)
+                        VStack(spacing: 0) {
+                            ForEach(Array(group.events.enumerated()), id: \.element.id) { eventIndex, event in
+                                laterRow(event)
+                                if eventIndex < group.events.count - 1 {
+                                    Divider().opacity(0.4)
+                                }
                             }
                         }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 2)
+                        .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 12))
                     }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 2)
-                    .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 12))
                 }
             }
         }
@@ -479,42 +515,75 @@ struct MenuView: View {
     private var skippedSection: some View {
         let items = app.skipped
         return VStack(alignment: .leading, spacing: 6) {
-            Text(L("GENEGEERD", "IGNORED", lang))
-                .font(.caption2.weight(.bold)).tracking(0.6)
-                .foregroundStyle(.secondary)
+            sectionHeader(L("GENEGEERD", "IGNORED", lang), key: Self.skippedSectionKey,
+                          count: items.count)
 
-            VStack(spacing: 0) {
-                ForEach(Array(items.enumerated()), id: \.element.id) { index, event in
-                    HStack(spacing: 10) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(event.title).font(.callout).foregroundStyle(.secondary).lineLimit(1)
-                            HStack(spacing: 5) {
-                                Text(shortTime(event))
-                                if let room = roomText(event) { Text("· \(room)").lineLimit(1) }
+            if !isCollapsed(Self.skippedSectionKey) {
+                VStack(spacing: 0) {
+                    ForEach(Array(items.enumerated()), id: \.element.id) { index, event in
+                        HStack(spacing: 10) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(event.title).font(.callout).foregroundStyle(.secondary).lineLimit(1)
+                                HStack(spacing: 5) {
+                                    Text(shortTime(event))
+                                    if let room = roomText(event) { Text("· \(room)").lineLimit(1) }
+                                }
+                                .font(.caption2).foregroundStyle(.tertiary)
                             }
-                            .font(.caption2).foregroundStyle(.tertiary)
+                            Spacer(minLength: 0)
+                            Button {
+                                app.unskipMeeting(id: event.id)
+                            } label: {
+                                Image(systemName: "arrow.uturn.backward.circle")
+                                    .font(.body).foregroundStyle(.secondary)
+                            }
+                            .buttonStyle(.plain)
+                            .help(L("Weer activeren", "Reactivate", lang))
                         }
-                        Spacer(minLength: 0)
-                        Button {
-                            app.unskipMeeting(id: event.id)
-                        } label: {
-                            Image(systemName: "arrow.uturn.backward.circle")
-                                .font(.body).foregroundStyle(.secondary)
-                        }
-                        .buttonStyle(.plain)
-                        .help(L("Weer activeren", "Reactivate", lang))
-                    }
-                    .padding(.vertical, 7)
+                        .padding(.vertical, 7)
 
-                    if index < items.count - 1 {
-                        Rectangle().fill(.white.opacity(0.10)).frame(height: 1)
+                        if index < items.count - 1 {
+                            Rectangle().fill(.white.opacity(0.10)).frame(height: 1)
+                        }
                     }
                 }
+                .padding(.horizontal, 12).padding(.vertical, 2)
+                .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 12))
             }
-            .padding(.horizontal, 12).padding(.vertical, 2)
-            .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 12))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    // MARK: Inklapbare secties
+
+    static let laterSectionKey = "later"
+    static let skippedSectionKey = "skipped"
+
+    private func isCollapsed(_ key: String) -> Bool {
+        store.settings.menuCollapsedSections.contains(key)
+    }
+
+    /// Klikbare sectiekop met chevron; ingeklapt toont hij ook het aantal items.
+    /// De inklap-status wordt in de instellingen bewaard en overleeft dus herstarts.
+    private func sectionHeader(_ title: String, key: String, count: Int) -> some View {
+        let collapsed = isCollapsed(key)
+        return Button {
+            if collapsed { store.settings.menuCollapsedSections.remove(key) }
+            else { store.settings.menuCollapsedSections.insert(key) }
+        } label: {
+            HStack(spacing: 5) {
+                Text(collapsed ? "\(title) (\(count))" : title)
+                    .font(.caption2.weight(.bold)).tracking(0.6)
+                Image(systemName: collapsed ? "chevron.right" : "chevron.down")
+                    .font(.system(size: 8, weight: .bold))
+            }
+            .foregroundStyle(.secondary)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help(collapsed
+              ? L("Sectie uitklappen", "Expand section", lang)
+              : L("Sectie inklappen", "Collapse section", lang))
     }
 
     /// Alleen het tijdstip (de dag staat al in het dag-kopje van de lijst).

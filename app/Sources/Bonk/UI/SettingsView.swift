@@ -256,11 +256,21 @@ struct SettingsView: View {
             }
             Toggle(L("Knop ‘open in agenda’ per meeting", "‘Open in calendar’ button per meeting", lang),
                    isOn: $store.settings.showCalendarItemLink)
+            LabeledContent(L("Doorzichtigheid", "Transparency", lang)) {
+                HStack(spacing: 8) {
+                    Slider(value: $store.settings.menuOpacity, in: 0.3...1.0)
+                        .frame(width: 160)
+                    Text("\(Int(store.settings.menuOpacity * 100))%")
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                        .frame(width: 38, alignment: .trailing)
+                }
+            }
         } header: {
             Text(L("Menu", "Menu", lang))
         } footer: {
-            subtleFooter(L("Het uitklapmenu. Het maximum telt alleen agenda-meetings — herinneringen worden altijd getoond. ‘Open in agenda’ opent de afspraak in Google Calendar of de Agenda-app.",
-                   "The dropdown menu. The maximum counts calendar meetings only — reminders are always shown. ‘Open in calendar’ opens the event in Google Calendar or the Calendar app.", lang))
+            subtleFooter(L("Het uitklapmenu. Het maximum telt alleen agenda-meetings — herinneringen worden altijd getoond. ‘Open in agenda’ opent de afspraak in Google Calendar of de Agenda-app. Doorzichtigheid bepaalt hoe dekkend de menu-achtergrond is (100% = volledig dekkend).",
+                   "The dropdown menu. The maximum counts calendar meetings only — reminders are always shown. ‘Open in calendar’ opens the event in Google Calendar or the Calendar app. Transparency sets how opaque the menu background is (100% = fully opaque).", lang))
         }
     }
 
@@ -1159,7 +1169,7 @@ struct ReminderEditorView: View {
                         Text(L("Geen", "None", lang)).tag(ReminderRepeat.none)
                         Text(L("Elke dag", "Every day", lang)).tag(ReminderRepeat.daily)
                         Text(L("Werkdagen (ma–vr)", "Weekdays (Mon–Fri)", lang)).tag(ReminderRepeat.weekdays)
-                        Text(L("Wekelijks", "Weekly", lang)).tag(ReminderRepeat.weekly)
+                        Text(L("Specifieke dagen…", "Specific days…", lang)).tag(ReminderRepeat.weekly)
                     }
                     .onChange(of: draft.repeatRule) { _, rule in
                         // Relatief ("over…") geldt alleen voor eenmalige herinneringen;
@@ -1323,7 +1333,7 @@ struct ReminderEditorView: View {
                 .filter { draft.weekdays.contains($0.element) }
                 .map { labels[$0.offset] }
                 .joined(separator: ", ")
-            return L("Wekelijks op \(days) om \(time).", "Weekly on \(days) at \(time).", lang)
+            return L("Elke week op \(days) om \(time).", "Every week on \(days) at \(time).", lang)
         }
     }
 
