@@ -338,8 +338,7 @@
       </ul>
     </div>
     <div class="price-card">
-      <span class="price">€0</span>
-      <span class="price-sub" data-i18n="price.sub">voor altijd</span>
+      <img class="price-icon" src="assets/icon.png" alt="" width="72" height="72">
       <a class="btn btn-large" href="#download" data-i18n="cta.download">Download voor macOS</a>
       <span class="price-note" data-i18n="price.note">Vereist macOS 14 of nieuwer</span>
     </div>
@@ -413,12 +412,25 @@
     <img src="assets/icon.png" alt="Bonk" width="96" height="96" class="dl-icon">
     <h2 data-i18n="dl.h">Klaar om nooit meer een meeting te missen?</h2>
     <p class="section-intro" data-i18n="dl.intro">Download Bonk en stel je eerste regel in een minuut in.</p>
-    <a class="btn btn-large" href="https://github.com/Kierkels/bonk/releases/latest" target="_blank" rel="noopener" data-i18n="cta.download">Download voor macOS</a>
-    <p class="cta-note" data-i18n="dl.note">Gratis · privacyvriendelijk · macOS 14+</p>
-    <div class="brew">
-      <p class="brew-label" data-i18n="dl.brew">Of installeer via <a href="https://brew.sh" target="_blank" rel="noopener">Homebrew</a>:</p>
-      <code class="brew-cmd">brew install --cask kierkels/tap/bonk</code>
+    <button class="brew-terminal" type="button" aria-label="Kopieer het Homebrew-commando / Copy the Homebrew command">
+      <span class="brew-line"><span class="brew-prompt">$</span> brew install --cask kierkels/tap/bonk</span>
+      <span class="brew-hint" data-i18n="brew.hint">klik om te kopiëren</span>
+    </button>
+
+    <div class="dl-row">
+      <a class="btn btn-large dl-btn" href="https://github.com/Kierkels/bonk/releases/latest" target="_blank" rel="noopener">
+        <svg viewBox="0 0 16 16" aria-hidden="true" fill="currentColor"><path d="M7.25 1.75a.75.75 0 0 1 1.5 0v6.69l2.22-2.22a.75.75 0 1 1 1.06 1.06l-3.5 3.5a.75.75 0 0 1-1.06 0l-3.5-3.5a.75.75 0 0 1 1.06-1.06l2.22 2.22V1.75Z"/><path d="M2.75 13a.75.75 0 0 0 0 1.5h10.5a.75.75 0 0 0 0-1.5H2.75Z"/></svg>
+        <span>Download .dmg</span>
+        <span class="dl-version" id="dl-version" hidden></span>
+      </a>
+      <a class="btn-star" href="https://github.com/Kierkels/bonk" target="_blank" rel="noopener">
+        <svg viewBox="0 0 16 16" aria-hidden="true" fill="currentColor"><path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.75.75 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"/></svg>
+        <span>Star on GitHub</span>
+        <span class="gh-count" hidden></span>
+      </a>
     </div>
+
+    <p class="cta-note" data-i18n="dl.note">Gratis · privacyvriendelijk · macOS 14+</p>
   </div>
 </section>
 
@@ -590,7 +602,6 @@ const I18N = {
   "free.li2": { nl: "Geen account of inlog", en: "No account or login" },
   "free.li3": { nl: "Geen in-app aankopen", en: "No in-app purchases" },
   "free.li4": { nl: "Geen verzamelde agenda-gegevens", en: "No collected calendar data" },
-  "price.sub": { nl: "voor altijd", en: "forever" },
   "price.note": { nl: "Vereist macOS 14 of nieuwer", en: "Requires macOS 14 or newer" },
 
   "privacy.h": { nl: "Privacy by design", en: "Privacy by design" },
@@ -605,10 +616,8 @@ const I18N = {
     en: "Download Bonk and set up your first rule in a minute."
   },
   "dl.note": { nl: "Gratis · privacyvriendelijk · macOS 14+", en: "Free · privacy-friendly · macOS 14+" },
-  "dl.brew": {
-    nl: "Of installeer via <a href=\"https://brew.sh\" target=\"_blank\" rel=\"noopener\">Homebrew</a>:",
-    en: "Or install via <a href=\"https://brew.sh\" target=\"_blank\" rel=\"noopener\">Homebrew</a>:"
-  },
+  "brew.hint": { nl: "klik om te kopiëren", en: "click to copy" },
+  "brew.copied": { nl: "gekopieerd ✓", en: "copied ✓" },
 
   "faq.title": { nl: "Veelgestelde vragen", en: "Frequently asked questions" },
   "faq1.q": {
@@ -701,23 +710,60 @@ function applyLang(lang) {
   applyLang(lang);
 })();
 
-// GitHub-sterrenteller in de nav: live opgehaald, per sessie gecachet zodat we
-// de ongeauthenticeerde API-limiet (60/uur per IP) niet onnodig belasten.
+// GitHub-sterrenteller (nav + download-sectie) en het versienummer op de
+// downloadknop: bij elke paginaweergave vers opgehaald, zodat de teller
+// meteen klopt. (Twee kleine ongeauthenticeerde API-calls per bezoeker.)
 (function () {
-  var el = document.getElementById("gh-count");
-  if (!el || !window.fetch) return;
-  function show(n) { el.textContent = "(" + n + ")"; el.hidden = false; }
-  var cached = null;
-  try { cached = sessionStorage.getItem("bonk-stars"); } catch (e) {}
-  if (cached != null && !isNaN(+cached)) { show(+cached); return; }
-  fetch("https://api.github.com/repos/Kierkels/bonk")
-    .then(function (r) { return r.ok ? r.json() : null; })
-    .then(function (d) {
-      if (!d || typeof d.stargazers_count !== "number") return;
-      try { sessionStorage.setItem("bonk-stars", String(d.stargazers_count)); } catch (e) {}
-      show(d.stargazers_count);
-    })
-    .catch(function () {});
+  if (!window.fetch) return;
+  var counts = document.querySelectorAll(".gh-count");
+  if (counts.length) {
+    fetch("https://api.github.com/repos/Kierkels/bonk")
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        if (!d || typeof d.stargazers_count !== "number") return;
+        counts.forEach(function (el) {
+          el.textContent = "(" + d.stargazers_count + ")";
+          el.hidden = false;
+        });
+      })
+      .catch(function () {});
+  }
+  var versionEl = document.getElementById("dl-version");
+  if (versionEl) {
+    fetch("https://api.github.com/repos/Kierkels/bonk/releases/latest")
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        if (!d || !d.tag_name) return;
+        versionEl.textContent = d.tag_name;
+        versionEl.hidden = false;
+      })
+      .catch(function () {});
+  }
+})();
+
+// Homebrew-regel: klik = commando kopiëren, met korte bevestiging in de hint.
+// Clipboard-API waar mogelijk, anders het klassieke execCommand-fallback.
+(function () {
+  var btn = document.querySelector(".brew-terminal");
+  if (!btn) return;
+  var hint = btn.querySelector(".brew-hint");
+  function copyText(t) {
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(t);
+    var ta = document.createElement("textarea");
+    ta.value = t; ta.setAttribute("readonly", "");
+    ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand("copy"); } catch (e) {}
+    document.body.removeChild(ta);
+    return Promise.resolve();
+  }
+  btn.addEventListener("click", function () {
+    copyText("brew install --cask kierkels/tap/bonk").then(function () {
+      var lang = document.documentElement.lang === "en" ? "en" : "nl";
+      hint.textContent = I18N["brew.copied"][lang];
+      setTimeout(function () { hint.textContent = I18N["brew.hint"][lang]; }, 1600);
+    }).catch(function () {});
+  });
 })();
 </script>
 
